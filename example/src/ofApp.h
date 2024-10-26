@@ -21,4 +21,5 @@ class ofApp: public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
 		
+  DividedArea dividedArea { {1000.0, 600.0} };
 };

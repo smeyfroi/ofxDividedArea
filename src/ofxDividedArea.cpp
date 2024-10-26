@@ -43,12 +43,12 @@ std::optional<glm::vec2> DividerLine::lineToSegmentIntersection(glm::vec2 lStart
   return glm::vec2 { x, y };
 }
 
-// Look for the shortest constrained line segment centred on ref1
-DividerLine DividerLine::create(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, glm::vec2 planeSize) {
+Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, const Line& startLine) {
   // Sort ref1 to be lower x than ref2
   if (ref1.x > ref2.x) std::swap(ref1, ref2);
-  glm::vec2 start {std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
-  glm::vec2 end {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
+
+  glm::vec2 start = startLine.start;
+  glm::vec2 end = startLine.end;
 
   for (const auto& constraint : constraints) {
     if (auto intersectionResult = lineToSegmentIntersection(ref1, ref2, constraint.start, constraint.end)) {
@@ -63,7 +63,14 @@ DividerLine DividerLine::create(glm::vec2 ref1, glm::vec2 ref2, DividerLines con
       }
     }
   }
-  return DividerLine {ref1, ref2, start, end};
+  
+  return Line { start, end };
+}
+
+// Look for the shortest constrained line segment centred on ref1, optionally starting with a line segment to be constrained
+DividerLine DividerLine::create(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, const Line& startLine) {
+  Line constrainedLine = findEnclosedLine(ref1, ref2, constraints, startLine);
+  return DividerLine {ref1, ref2, constrainedLine.start, constrainedLine.end};
 }
 
 void DividerLine::draw(float width) const {
@@ -71,14 +78,38 @@ void DividerLine::draw(float width) const {
   ofTranslate(start);
   ofRotateRad(std::atan2((end.y - start.y), (end.x - start.x)));
 
-  ofPath path;
-  path.moveTo(0.0, 0.0);
-  path.lineTo(glm::distance(start, end), -width/2.0);
-  path.lineTo(glm::distance(start, end), width/2.0);
-  path.lineTo(0.0, 0.0);
-  path.setFilled(true);
-  path.draw();
+//  ofPath path;
+//  path.moveTo(0.0, 0.0);
+//  path.lineTo(glm::distance(start, end), -width/2.0);
+//  path.lineTo(glm::distance(start, end), width/2.0);
+//  path.lineTo(0.0, 0.0);
+//  path.setFilled(true);
+//  path.draw();
   
-//  ofDrawRectangle(-1.0, -width/2.0, glm::length(end-start)+width*2.0, width);
+  ofDrawRectangle(-1.0, -width/2.0, glm::length(end-start)+width*2.0, width);
   ofPopMatrix();
+}
+
+
+bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
+  Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
+  unconstrainedDividerLines.emplace_back(DividerLine {ref1, ref2, lineWithinArea.start, lineWithinArea.end});
+  return true;
+}
+
+bool DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
+  Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
+  Line lineWithinUnconstrainedDividerLines = DividerLine::findEnclosedLine(ref1, ref2, unconstrainedDividerLines, lineWithinArea);
+  DividerLine dividerLine = DividerLine::create(ref1, ref2, constrainedDividerLines, lineWithinUnconstrainedDividerLines);
+  constrainedDividerLines.push_back(dividerLine);
+  return true;
+}
+
+void DividedArea::draw(float dividerLineWidth) {
+  for (const auto& dl : unconstrainedDividerLines) {
+    dl.draw(dividerLineWidth);
+  }
+  for (const auto& dl : constrainedDividerLines) {
+    dl.draw(dividerLineWidth);
+  }
 }
