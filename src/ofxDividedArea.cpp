@@ -74,6 +74,7 @@ DividerLine DividerLine::create(glm::vec2 ref1, glm::vec2 ref2, DividerLines con
 }
 
 void DividerLine::draw(float width) const {
+  if (width <= 0.0) return;
   ofPushMatrix();
   ofTranslate(start);
   ofRotateRad(std::atan2((end.y - start.y), (end.x - start.x)));
@@ -86,7 +87,7 @@ void DividerLine::draw(float width) const {
 //  path.setFilled(true);
 //  path.draw();
   
-  ofDrawRectangle(-1.0, -width/2.0, glm::length(end-start)+width*2.0, width);
+  ofDrawRectangle(0.0, -width/2.0, glm::length(end-start), width);
   ofPopMatrix();
 }
 
@@ -105,11 +106,14 @@ bool DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
   return true;
 }
 
-void DividedArea::draw(float dividerLineWidth) {
+void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth) {
+  for (const auto& dl : areaConstraints) {
+    dl.draw(areaConstraintLineWidth);
+  }
   for (const auto& dl : unconstrainedDividerLines) {
-    dl.draw(dividerLineWidth);
+    dl.draw(unconstrainedLineWidth);
   }
   for (const auto& dl : constrainedDividerLines) {
-    dl.draw(dividerLineWidth);
+    dl.draw(constrainedLineWidth);
   }
 }

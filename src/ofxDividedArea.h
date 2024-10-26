@@ -48,5 +48,5 @@ public:
   DividerLines constrainedDividerLines; // constrained by all other divider lines
   bool addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
   bool addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
-  void draw(float dividerLineWidth);
+  void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth);
 };
