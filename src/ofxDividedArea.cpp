@@ -177,12 +177,15 @@ template bool DividedArea::updateUnconstrainedDividerLines<glm::vec2>(const std:
 template bool DividedArea::updateUnconstrainedDividerLines<glm::vec3>(const std::vector<glm::vec3>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices);
 template bool DividedArea::updateUnconstrainedDividerLines<glm::vec4>(const std::vector<glm::vec4>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices);
 
-bool DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
-  if (ref1 == ref2) return false;
+DividerLine DividedArea::createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const {
   Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
   Line lineWithinUnconstrainedDividerLines = DividerLine::findEnclosedLine(ref1, ref2, unconstrainedDividerLines, lineWithinArea);
-  DividerLine dividerLine = DividerLine::create(ref1, ref2, constrainedDividerLines, lineWithinUnconstrainedDividerLines);
-  // TODO: check for validity here
+  return DividerLine::create(ref1, ref2, constrainedDividerLines, lineWithinUnconstrainedDividerLines);
+}
+
+bool DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
+  if (ref1 == ref2) return false;
+  DividerLine dividerLine = createConstrainedDividerLine(ref1, ref2);
   constrainedDividerLines.push_back(dividerLine);
   return true;
 }
