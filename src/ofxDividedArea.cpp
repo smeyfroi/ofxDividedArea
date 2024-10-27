@@ -112,16 +112,18 @@ bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
   return true;
 }
 
-bool containsPoint(const std::vector<glm::vec2>& points, glm::vec2 point) {
-  return std::find(points.begin(),
-                   points.end(),
-                   point) != points.end();
+template<typename PT, typename A>
+bool containsPoint(const std::vector<PT, A>& points, glm::vec2 point) {
+  return std::find_if(points.begin(),
+                      points.end(),
+                      [&](const PT& p) { return (glm::vec2(p) == point); }) != points.end();
 }
 
-std::optional<glm::vec2> findClosePoint(const std::vector<glm::vec2>& points, glm::vec2 point, float tolerance) {
+template<typename PT, typename A>
+std::optional<glm::vec2> findClosePoint(const std::vector<PT, A>& points, glm::vec2 point, float tolerance) {
   auto iter = std::find_if(points.begin(),
                            points.end(),
-                           [&](glm::vec2 p) { return glm::distance(p, point) < tolerance; });
+                           [&](const PT& p) { return glm::distance(glm::vec2(p), point) < tolerance; });
   if (iter != points.end()) {
     return *iter;
   } else {
@@ -129,8 +131,9 @@ std::optional<glm::vec2> findClosePoint(const std::vector<glm::vec2>& points, gl
   }
 }
 
-// Update unconstrainedDividerLines to run through the passed reference points, adding one extra to top up towards the max
-bool DividedArea::updateUnconstrainedDividerLines(const std::vector<glm::vec2>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices) {
+// Update unconstrainedDividerLines to run through the passed reference points (which can be glm::vec4), adding one extra to top up towards the max
+template<typename PT>
+bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices) {
   bool linesChanged = false;
   const float POINT_DISTANCE_CLOSE = size.x * 1.0/10.0;
 
@@ -169,6 +172,10 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<glm::vec2>& 
   
   return linesChanged;
 }
+
+template bool DividedArea::updateUnconstrainedDividerLines<glm::vec2>(const std::vector<glm::vec2>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices);
+template bool DividedArea::updateUnconstrainedDividerLines<glm::vec3>(const std::vector<glm::vec3>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices);
+template bool DividedArea::updateUnconstrainedDividerLines<glm::vec4>(const std::vector<glm::vec4>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices);
 
 bool DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
   if (ref1 == ref2) return false;

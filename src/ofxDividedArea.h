@@ -50,7 +50,9 @@ public:
   DividerLines constrainedDividerLines; // constrained by all other divider lines
   bool hasSimilarUnconstrainedDividerLine(const DividerLine& dividerLine) const;
   bool addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
-  bool updateUnconstrainedDividerLines(const std::vector<glm::vec2>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices);
+  template<typename PT>
+  bool updateUnconstrainedDividerLines(const std::vector<PT>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices);
+  template<typename PT> void test(const std::vector<PT>& majorRefPoints);
   bool addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
   void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth) const;
 };
