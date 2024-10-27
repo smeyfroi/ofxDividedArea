@@ -91,29 +91,109 @@ void DividerLine::draw(float width) const {
   ofPopMatrix();
 }
 
+bool DividerLine::isSimilarTo(const DividerLine& dividerLine, float distanceTolerance) const {
+  return ((glm::distance(dividerLine.start, start) < distanceTolerance) &&
+          (glm::distance(dividerLine.end, end) < distanceTolerance));
+}
+
+bool DividedArea::hasSimilarUnconstrainedDividerLine(const DividerLine& dividerLine) const {
+  const float distanceTolerance = size.x * 10.0/100.0;
+  return std::any_of(unconstrainedDividerLines.begin(),
+                     unconstrainedDividerLines.end(),
+                     [&](const auto& dl) { return dl.isSimilarTo(dividerLine, distanceTolerance); });
+}
 
 bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
+  if (maxUnconstrainedDividerLines >= 0 && unconstrainedDividerLines.size() >= maxUnconstrainedDividerLines) return false;
+  if (ref1 == ref2) return false;
   Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
-  unconstrainedDividerLines.emplace_back(DividerLine {ref1, ref2, lineWithinArea.start, lineWithinArea.end});
+  DividerLine dividerLine {ref1, ref2, lineWithinArea.start, lineWithinArea.end};
+  unconstrainedDividerLines.push_back(dividerLine);
   return true;
 }
 
+bool containsPoint(const std::vector<glm::vec2>& points, glm::vec2 point) {
+  return std::find(points.begin(),
+                   points.end(),
+                   point) != points.end();
+}
+
+std::optional<glm::vec2> findClosePoint(const std::vector<glm::vec2>& points, glm::vec2 point, float tolerance) {
+  auto iter = std::find_if(points.begin(),
+                           points.end(),
+                           [&](glm::vec2 p) { return glm::distance(p, point) < tolerance; });
+  if (iter != points.end()) {
+    return *iter;
+  } else {
+    return std::nullopt;
+  }
+}
+
+// Update unconstrainedDividerLines to run through the passed reference points, adding one extra to top up towards the max
+bool DividedArea::updateUnconstrainedDividerLines(const std::vector<glm::vec2>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices) {
+  bool linesChanged = false;
+  const float POINT_DISTANCE_CLOSE = size.x * 1.0/10.0;
+
+  // Find an obsolete line with reference points not in majorRefPoints,
+  // then replace with a close equivalent or delete it
+  for (auto iter = unconstrainedDividerLines.cbegin(); iter != unconstrainedDividerLines.cend(); iter++) {
+    const auto& line = *iter;
+    bool obsoleteRef1 = false, obsoleteRef2 = false;
+    std::optional<glm::vec2> replacementRef1, replacementRef2;
+    if (!containsPoint(majorRefPoints, line.ref1)) {
+      obsoleteRef1 = true;
+      replacementRef1 = findClosePoint(majorRefPoints, line.ref1, POINT_DISTANCE_CLOSE);
+    }
+    if (!containsPoint(majorRefPoints, line.ref2)) {
+      obsoleteRef2 = true;
+      replacementRef2 = findClosePoint(majorRefPoints, line.ref2, POINT_DISTANCE_CLOSE);
+    }
+    if (!obsoleteRef1 || !obsoleteRef2) continue;
+    linesChanged = true;
+    unconstrainedDividerLines.erase(iter);
+    if ((obsoleteRef1 && !replacementRef1.has_value()) || (obsoleteRef2 && !replacementRef2.has_value())) break;
+    glm::vec2 newRef1 = replacementRef1.has_value() ? replacementRef1.value() : line.ref1;
+    glm::vec2 newRef2 = replacementRef2.has_value() ? replacementRef2.value() : line.ref2;
+    addUnconstrainedDividerLine(newRef1, newRef2);
+    break;
+  }
+  
+  // add new lines from candidate ref points
+  if (candidateRefPointIndices.size() > 1) {
+    for (auto iter = candidateRefPointIndices.cbegin(); iter != candidateRefPointIndices.cend() - 1; iter++) {
+      auto p1 = majorRefPoints.at(*iter);
+      auto p2 = majorRefPoints.at(*(iter+1));
+      linesChanged |= addUnconstrainedDividerLine(p1, p2);
+    }
+  }
+  
+  return linesChanged;
+}
+
 bool DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
+  if (ref1 == ref2) return false;
   Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
   Line lineWithinUnconstrainedDividerLines = DividerLine::findEnclosedLine(ref1, ref2, unconstrainedDividerLines, lineWithinArea);
   DividerLine dividerLine = DividerLine::create(ref1, ref2, constrainedDividerLines, lineWithinUnconstrainedDividerLines);
+  // TODO: check for validity here
   constrainedDividerLines.push_back(dividerLine);
   return true;
 }
 
-void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth) {
-  for (const auto& dl : areaConstraints) {
-    dl.draw(areaConstraintLineWidth);
+void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth) const {
+  if (areaConstraintLineWidth > 0) {
+    for (const auto& dl : areaConstraints) {
+      dl.draw(areaConstraintLineWidth);
+    }
   }
-  for (const auto& dl : unconstrainedDividerLines) {
-    dl.draw(unconstrainedLineWidth);
+  if (unconstrainedLineWidth > 0) {
+    for (const auto& dl : unconstrainedDividerLines) {
+      dl.draw(unconstrainedLineWidth);
+    }
   }
-  for (const auto& dl : constrainedDividerLines) {
-    dl.draw(constrainedLineWidth);
+  if (constrainedLineWidth > 0) {
+    for (const auto& dl : constrainedDividerLines) {
+      dl.draw(constrainedLineWidth);
+    }
   }
 }

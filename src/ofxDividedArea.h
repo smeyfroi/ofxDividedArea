@@ -27,6 +27,7 @@ public:
   static Line findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, const Line& startLine = longestLine);
   static DividerLine create(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, const Line& startLine = longestLine);
   void draw(float width) const;
+  bool isSimilarTo(const DividerLine& dividerLine, float distanceTolerance) const;
   
 private:
   static float yForLineAtX(float x, glm::vec2 start, glm::vec2 end);
@@ -38,6 +39,7 @@ private:
 class DividedArea {
 public:
   glm::vec2 size {1.0, 1.0};
+  int maxUnconstrainedDividerLines { -1 };
   DividerLines areaConstraints {
     {{0.0, 0.0}, {size.x, 0.0}, {0.0, 0.0}, {size.x, 0.0}},
     {{size.x, 0.0}, size, {size.x, 0.0}, size},
@@ -46,7 +48,9 @@ public:
   };
   DividerLines unconstrainedDividerLines; // unconstrained, across the entire area
   DividerLines constrainedDividerLines; // constrained by all other divider lines
+  bool hasSimilarUnconstrainedDividerLine(const DividerLine& dividerLine) const;
   bool addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
+  bool updateUnconstrainedDividerLines(const std::vector<glm::vec2>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices);
   bool addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
-  void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth);
+  void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth) const;
 };

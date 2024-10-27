@@ -8,16 +8,29 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update(){
   if (ofGetFrameNum() % 50 == 0) {
-    dividedArea.addUnconstrainedDividerLine({ofRandom(300)+100,ofRandom(300)+100},
-                                            {ofRandom(300)+100,ofRandom(300)+100});
+    
+    // add unconstrained line to join some established points
+    majorRefPoints.insert(majorRefPoints.begin(), {ofRandom(ofGetWindowWidth()-100)+50, ofRandom(ofGetWindowHeight()-100)+50});
+    majorRefPoints.resize(std::min((int)majorRefPoints.size(), 14));
+    if (majorRefPoints.size() > 2) {
+      dividedArea.updateUnconstrainedDividerLines(majorRefPoints, {(size_t)ofRandom(majorRefPoints.size()), (size_t)ofRandom(majorRefPoints.size())});
+    }
+    
+    // OR add unconstrained line directly
+//    dividedArea.addUnconstrainedDividerLine({ofRandom(300)+100, ofRandom(300)+100},
+//                                            {ofRandom(300)+100, ofRandom(300)+100});
   }
-  dividedArea.addConstrainedDividerLine({ofRandom(600)+10,ofRandom(500)+10},
-                                          {ofRandom(600)+10,ofRandom(500)+10});
+
+  dividedArea.addConstrainedDividerLine({ofRandom(ofGetWindowWidth()-100)+50, ofRandom(ofGetWindowHeight()-100)+50},
+                                        {ofRandom(ofGetWindowWidth()-100)+50, ofRandom(ofGetWindowHeight()-100)+50});
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
   dividedArea.draw(10, 6, 0.5);
+//  std::for_each(majorRefPoints.begin(),
+//                majorRefPoints.end(),
+//                [](const auto& p) { return ofDrawCircle(p.x, p.y, 8); });
 }
 
 //--------------------------------------------------------------
