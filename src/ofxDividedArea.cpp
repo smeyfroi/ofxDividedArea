@@ -92,8 +92,8 @@ void DividerLine::draw(float width) const {
 }
 
 bool DividerLine::isSimilarTo(const DividerLine& dividerLine, float distanceTolerance) const {
-  return ((glm::distance(dividerLine.start, start) < distanceTolerance) &&
-          (glm::distance(dividerLine.end, end) < distanceTolerance));
+  return ((glm::distance2(dividerLine.start, start) < distanceTolerance) &&
+          (glm::distance2(dividerLine.end, end) < distanceTolerance));
 }
 
 bool DividedArea::hasSimilarUnconstrainedDividerLine(const DividerLine& dividerLine) const {
@@ -108,6 +108,7 @@ bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
   if (ref1 == ref2) return false;
   Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
   DividerLine dividerLine {ref1, ref2, lineWithinArea.start, lineWithinArea.end};
+  if (hasSimilarUnconstrainedDividerLine(dividerLine)) return false;
   unconstrainedDividerLines.push_back(dividerLine);
   return true;
 }
