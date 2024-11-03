@@ -3,16 +3,20 @@
 #include "ofMath.h"
 #include "ofPath.h"
 
+float DividerLine::gradient(glm::vec2 start, glm::vec2 end) {
+  return (end.y - start.y) / (end.x - start.x);
+}
+
 // y = mx + b
 float DividerLine::yForLineAtX(float x, glm::vec2 start, glm::vec2 end) {
-  float m = (end.y - start.y) / (end.x - start.x);
+  float m = gradient(start, end);
   float b = start.y - (m * start.x);
   return m * x + b;
 }
 
 // y = mx + b
 float DividerLine::xForLineAtY(float y, glm::vec2 start, glm::vec2 end) {
-  float m = (end.y - start.y) / (end.x - start.x);
+  float m = gradient(start, end);
   float b = start.y - (m * start.x);
   return (y - b) / m;
 }
@@ -41,6 +45,22 @@ std::optional<glm::vec2> DividerLine::lineToSegmentIntersection(glm::vec2 lStart
     return std::nullopt;
   }
   return glm::vec2 { x, y };
+}
+
+// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+float DividerLine::pointToLineDistance(glm::vec2 point, const DividerLine& line) {
+  return std::abs( (line.end.y-line.start.y)*point.x - (line.end.x-line.start.x)*point.y + (line.end.x*line.start.y) - (line.end.y*line.start.x) ) / std::sqrt( std::pow(line.end.y-line.start.y,2) + std::pow(line.end.x-line.start.x,2) );
+}
+
+// endpoints of one line close to other line and gradients similar
+bool DividerLine::isOccludedBy(DividerLine dividerLine, float distanceTolerance, float gradientTolerance) const {
+  float dot = glm::dot(glm::normalize(end-start), glm::normalize(dividerLine.end-dividerLine.start));
+  if (std::abs(dot) < gradientTolerance) return false;
+  if ((pointToLineDistance(start, dividerLine) < distanceTolerance &&
+       pointToLineDistance(end, dividerLine) < distanceTolerance)) return true;
+  if ((pointToLineDistance(dividerLine.start, *this) < distanceTolerance &&
+       pointToLineDistance(dividerLine.end, *this) < distanceTolerance)) return true;
+  return false;
 }
 
 Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, const Line& startLine) {
@@ -91,6 +111,10 @@ void DividerLine::draw(float width) const {
   ofPopMatrix();
 }
 
+float DividerLine::gradient() const {
+  return (end.y - start.y) / (end.x - start.x);
+}
+
 bool DividerLine::isSimilarTo(const DividerLine& dividerLine, float distanceTolerance) const {
   return ((glm::distance2(dividerLine.start, start) < distanceTolerance) &&
           (glm::distance2(dividerLine.end, end) < distanceTolerance));
@@ -133,8 +157,8 @@ std::optional<glm::vec2> findClosePoint(const std::vector<PT, A>& points, glm::v
 }
 
 // Update unconstrainedDividerLines to run through the passed reference points (which can be glm::vec4), adding one extra to top up towards the max
-template<typename PT>
-bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices) {
+template<typename PT, typename A>
+bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices) {
   bool linesChanged = false;
   const float POINT_DISTANCE_CLOSE = size.x * 1.0/10.0;
 
@@ -144,6 +168,7 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT>& majorRe
     const auto& line = *iter;
     bool obsoleteRef1 = false, obsoleteRef2 = false;
     std::optional<glm::vec2> replacementRef1, replacementRef2;
+    
     if (!containsPoint(majorRefPoints, line.ref1)) {
       obsoleteRef1 = true;
       replacementRef1 = findClosePoint(majorRefPoints, line.ref1, POINT_DISTANCE_CLOSE);
@@ -152,10 +177,12 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT>& majorRe
       obsoleteRef2 = true;
       replacementRef2 = findClosePoint(majorRefPoints, line.ref2, POINT_DISTANCE_CLOSE);
     }
-    if (!obsoleteRef1 || !obsoleteRef2) continue;
+    if (!obsoleteRef1 && !obsoleteRef2) continue;
+    
     linesChanged = true;
     unconstrainedDividerLines.erase(iter);
     if ((obsoleteRef1 && !replacementRef1.has_value()) || (obsoleteRef2 && !replacementRef2.has_value())) break;
+    
     glm::vec2 newRef1 = replacementRef1.has_value() ? replacementRef1.value() : line.ref1;
     glm::vec2 newRef2 = replacementRef2.has_value() ? replacementRef2.value() : line.ref2;
     addUnconstrainedDividerLine(newRef1, newRef2);
@@ -163,7 +190,7 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT>& majorRe
   }
   
   // add new lines from candidate ref points
-  if (candidateRefPointIndices.size() > 1) {
+  if (!majorRefPoints.empty() && candidateRefPointIndices.size() > 1) {
     for (auto iter = candidateRefPointIndices.cbegin(); iter != candidateRefPointIndices.cend() - 1; iter++) {
       auto p1 = majorRefPoints.at(*iter);
       auto p2 = majorRefPoints.at(*(iter+1));
@@ -178,6 +205,10 @@ template bool DividedArea::updateUnconstrainedDividerLines<glm::vec2>(const std:
 template bool DividedArea::updateUnconstrainedDividerLines<glm::vec3>(const std::vector<glm::vec3>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices);
 template bool DividedArea::updateUnconstrainedDividerLines<glm::vec4>(const std::vector<glm::vec4>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices);
 
+void DividedArea::clearConstrainedDividerLines() {
+  constrainedDividerLines.clear();
+}
+
 DividerLine DividedArea::createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const {
   Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
   Line lineWithinUnconstrainedDividerLines = DividerLine::findEnclosedLine(ref1, ref2, unconstrainedDividerLines, lineWithinArea);
@@ -185,8 +216,13 @@ DividerLine DividedArea::createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 
 }
 
 bool DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
+  const float POINT_DISTANCE_CLOSE = size.x * 1.0/200.0;
+  const float GRADIENT_CLOSE = 0.4; // gradients close when dot product < this constant
   if (ref1 == ref2) return false;
   DividerLine dividerLine = createConstrainedDividerLine(ref1, ref2);
+  for (const auto& dl : constrainedDividerLines) {
+    if (dividerLine.isOccludedBy(dl, POINT_DISTANCE_CLOSE, GRADIENT_CLOSE)) return false;
+  }
   constrainedDividerLines.push_back(dividerLine);
   return true;
 }

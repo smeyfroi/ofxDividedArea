@@ -12,9 +12,7 @@ void ofApp::update(){
     // add unconstrained line to join some established points
     majorRefPoints.insert(majorRefPoints.begin(), {ofRandom(ofGetWindowWidth()-100)+50, ofRandom(ofGetWindowHeight()-100)+50});
     majorRefPoints.resize(std::min((int)majorRefPoints.size(), 14));
-    if (majorRefPoints.size() > 2) {
-      dividedArea.updateUnconstrainedDividerLines(majorRefPoints, {(size_t)ofRandom(majorRefPoints.size()), (size_t)ofRandom(majorRefPoints.size())});
-    }
+    dividedArea.updateUnconstrainedDividerLines(majorRefPoints, {(size_t)ofRandom(majorRefPoints.size()), (size_t)ofRandom(majorRefPoints.size())});
     
     // OR add unconstrained line directly
 //    dividedArea.addUnconstrainedDividerLine({ofRandom(300)+100, ofRandom(300)+100},

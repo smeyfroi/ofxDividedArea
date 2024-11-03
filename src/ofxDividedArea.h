@@ -27,13 +27,18 @@ public:
   static Line findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, const Line& startLine = longestLine);
   static DividerLine create(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, const Line& startLine = longestLine);
   void draw(float width) const;
+  float gradient() const;
   bool isSimilarTo(const DividerLine& dividerLine, float distanceTolerance) const;
-  
+  bool isOccludedBy(DividerLine dividerLine, float distanceTolerance, float gradientTolerance) const;
+
 private:
+  static float gradient(glm::vec2 start, glm::vec2 end);
   static float yForLineAtX(float x, glm::vec2 start, glm::vec2 end);
   static float xForLineAtY(float y, glm::vec2 start, glm::vec2 end);
   static std::optional<glm::vec2> lineToSegmentIntersection(glm::vec2 lStart, glm::vec2 lEnd, glm::vec2 lsStart, glm::vec2 lsEnd);
+  static float pointToLineDistance(glm::vec2 point, const DividerLine& line);
 };
+
 
 
 class DividedArea {
@@ -50,8 +55,9 @@ public:
   DividerLines constrainedDividerLines; // constrained by all other divider lines
   bool hasSimilarUnconstrainedDividerLine(const DividerLine& dividerLine) const;
   bool addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
-  template<typename PT>
-  bool updateUnconstrainedDividerLines(const std::vector<PT>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices);
+  template<typename PT, typename A>
+  bool updateUnconstrainedDividerLines(const std::vector<PT, A>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices);
+  void clearConstrainedDividerLines();
   DividerLine createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const;
   bool addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
   void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth) const;
