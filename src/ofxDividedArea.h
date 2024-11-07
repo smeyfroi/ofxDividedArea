@@ -30,6 +30,8 @@ public:
   float gradient() const;
   bool isSimilarTo(const DividerLine& dividerLine, float distanceTolerance) const;
   bool isOccludedBy(DividerLine dividerLine, float distanceTolerance, float gradientTolerance) const;
+  template<typename PT>
+  static bool isRefPointUsed(const DividerLines& dividerLines, const PT refPoint);
 
 private:
   static float gradient(glm::vec2 start, glm::vec2 end);
@@ -53,12 +55,15 @@ public:
   };
   DividerLines unconstrainedDividerLines; // unconstrained, across the entire area
   DividerLines constrainedDividerLines; // constrained by all other divider lines
+  
   bool hasSimilarUnconstrainedDividerLine(const DividerLine& dividerLine) const;
   bool addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
   template<typename PT, typename A>
-  bool updateUnconstrainedDividerLines(const std::vector<PT, A>& majorRefPoints, const std::vector<size_t>& candidateRefPointIndices);
+  bool updateUnconstrainedDividerLines(const std::vector<PT, A>& majorRefPoints);
+  
   void clearConstrainedDividerLines();
   DividerLine createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const;
   bool addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
+  
   void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth) const;
 };
