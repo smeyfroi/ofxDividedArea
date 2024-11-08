@@ -62,8 +62,10 @@ public:
   bool updateUnconstrainedDividerLines(const std::vector<PT, A>& majorRefPoints);
   
   void clearConstrainedDividerLines();
+  void deleteEarlyConstrainedDividerLines(size_t count);
   DividerLine createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const;
-  bool addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
-  
+  std::optional<DividerLine> addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
+//  void updateConstrainedDividerLines();
+
   void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth) const;
 };

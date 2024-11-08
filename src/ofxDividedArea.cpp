@@ -71,6 +71,10 @@ Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, DividerLines 
   glm::vec2 end = startLine.end;
 
   for (const auto& constraint : constraints) {
+    if ((ref1 == constraint.ref1 && ref2 == constraint.ref2) || (ref2 == constraint.ref1 && ref1 == constraint.ref2)) {
+      // don't constrain by self
+      continue;
+    }
     if (auto intersectionResult = lineToSegmentIntersection(ref1, ref2, constraint.start, constraint.end)) {
       glm::vec2 intersection = intersectionResult.value();
       float distRef1New = glm::distance(intersection, ref1);
@@ -167,10 +171,12 @@ std::optional<glm::vec2> findClosePoint(const std::vector<PT, A>& points, glm::v
   }
 }
 
-// Update unconstrainedDividerLines to run through the passed reference points (which can be glm::vec4), adding one extra to top up towards the max
+// Update unconstrainedDividerLines to move towards the passed reference
+// points (which can be glm::vec4), adding and deleting max one per call
+// to maintain the number required.
 template<typename PT, typename A>
 bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majorRefPoints) {
-  const float tolerance = 0.05; // FIXME: extract somewhere
+  const float lerpAmount = 0.05; // FIXME: extract somewhere
   const float POINT_DISTANCE_CLOSE = size.x * 1.0/10.0; // FIXME: extract somewhere
 
   bool linesChanged = false;
@@ -184,12 +190,20 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
     std::optional<glm::vec2> replacementRef2 = findClosePoint(majorRefPoints, line.ref2, POINT_DISTANCE_CLOSE);
         
     if (replacementRef1.has_value() && replacementRef2.has_value()) {
-      // Still valid
-      if (replacementRef1.value() == line.ref1 && replacementRef2.value() == line.ref2) continue;
+      // Still valid if ref points close enough
+      if (glm::distance2(replacementRef1.value(), line.ref1) < POINT_DISTANCE_CLOSE/20.0 && glm::distance2(replacementRef2.value(), line.ref2) < POINT_DISTANCE_CLOSE/20.0) {
+//        ofLogNotice() << "similar " << line.ref1.x << ":" << replacementRef1.value().x << " , " << line.ref1.y << ":" << replacementRef1.value().y;
+        continue;
+      }
       // Move towards updated ref points
-      Line updatedLine = DividerLine::findEnclosedLine(replacementRef1.value(), replacementRef2.value(), areaConstraints);
-      line.ref1 = glm::mix(line.ref1, replacementRef1.value(), tolerance);
-      line.ref2 = glm::mix(line.ref2, replacementRef2.value(), tolerance);
+//      ofLogNotice() << "move " << line.ref1.x << ":" << replacementRef1.value().x << " , " << line.ref1.y << ":" << replacementRef1.value().y;
+      auto newRef1 = glm::mix(line.ref1, replacementRef1.value(), lerpAmount);
+      auto newRef2 = glm::mix(line.ref2, replacementRef2.value(), lerpAmount);
+      Line updatedLine = DividerLine::findEnclosedLine(newRef1, newRef2, areaConstraints);
+      line = DividerLine { newRef1, newRef2, updatedLine.start, updatedLine.end };
+
+      // FIXME: check for occlusion and delete
+      
     } else if (replacementRef1.has_value()) {
       
       // FIXME: refactor all the duplication
@@ -199,12 +213,14 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
                                majorRefPoints.end(),
                                [&](const auto& p) { return !DividerLine::isRefPointUsed(unconstrainedDividerLines, p); });
       if (iter2 != majorRefPoints.end()) line.ref2 = *iter2;
+//      ofLogNotice() << "replace ref2";
     } else if (replacementRef2.has_value()) {
       // Replace obsolete ref1
       auto iter1 = std::find_if(majorRefPoints.begin(),
                                majorRefPoints.end(),
                                [&](const auto& p) { return !DividerLine::isRefPointUsed(unconstrainedDividerLines, p); });
       if (iter1 != majorRefPoints.end()) line.ref1 = *iter1;
+//      ofLogNotice() << "replace ref1";
     } else {
       // Obsolete ref1 and ref2
       auto iter1 = std::find_if(majorRefPoints.begin(),
@@ -216,10 +232,12 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
       if (iter1 != majorRefPoints.end() && iter2 != majorRefPoints.end()) {
         line.ref1 = *iter1;
         line.ref2 = *iter2;
+//        ofLogNotice() << "replace ref1 and ref2";
       } else {
         // delete max one and break for simplicity
         unconstrainedDividerLines.erase(iter);
         linesChanged = true;
+//        ofLogNotice() << "delete";
         break;
       }
     }
@@ -227,6 +245,7 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
     linesChanged = true;
   }
   
+  // add max one
   auto iter1 = std::find_if(majorRefPoints.begin(),
                            majorRefPoints.end(),
                             [&](const auto& p) { return !DividerLine::isRefPointUsed(unconstrainedDividerLines, p); });
@@ -250,23 +269,40 @@ void DividedArea::clearConstrainedDividerLines() {
   constrainedDividerLines.clear();
 }
 
+void DividedArea::deleteEarlyConstrainedDividerLines(size_t count) {
+  auto startIter = constrainedDividerLines.begin();
+  auto endIter = constrainedDividerLines.begin() + count;
+  if (endIter > constrainedDividerLines.end()) endIter = constrainedDividerLines.end();
+  constrainedDividerLines.erase(startIter, endIter);
+}
+
 DividerLine DividedArea::createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const {
   Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
   Line lineWithinUnconstrainedDividerLines = DividerLine::findEnclosedLine(ref1, ref2, unconstrainedDividerLines, lineWithinArea);
   return DividerLine::create(ref1, ref2, constrainedDividerLines, lineWithinUnconstrainedDividerLines);
 }
 
-bool DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
+std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
   const float POINT_DISTANCE_CLOSE = size.x * 1.0/200.0;
   const float GRADIENT_CLOSE = 0.4; // gradients close when dot product < this constant
-  if (ref1 == ref2) return false;
+  if (ref1 == ref2) return std::nullopt;
   DividerLine dividerLine = createConstrainedDividerLine(ref1, ref2);
   for (const auto& dl : constrainedDividerLines) {
-    if (dividerLine.isOccludedBy(dl, POINT_DISTANCE_CLOSE, GRADIENT_CLOSE)) return false;
+    if (dividerLine.isOccludedBy(dl, POINT_DISTANCE_CLOSE, GRADIENT_CLOSE)) return std::nullopt;
   }
   constrainedDividerLines.push_back(dividerLine);
-  return true;
+  return dividerLine;
 }
+
+// This doesn't work as is: need a solver, not a replacer like this, which changes things in bulk with bad ripple effects
+//void DividedArea::updateConstrainedDividerLines() {
+//  auto newDividerLines = constrainedDividerLines;
+//  for (auto& dl : newDividerLines) {
+//    auto newDl = createConstrainedDividerLine(dl.ref1, dl.ref2);
+//    dl = newDl;
+//  }
+//  constrainedDividerLines = newDividerLines;
+//}
 
 void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth) const {
   if (areaConstraintLineWidth > 0) {
