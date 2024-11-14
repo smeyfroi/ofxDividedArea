@@ -2,7 +2,7 @@
 
 #include "glm/vec2.hpp"
 #include <vector>
-
+#include "ofColor.h"
 
 class DividerLine;
 using DividerLines = std::vector<DividerLine>;
@@ -16,6 +16,10 @@ const Line longestLine {
   {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()}
 };
 
+struct LineConfig {
+  float minWidth { 0.0 }, maxWidth { 0.0 };
+  ofColor color;
+};
 
 // A line that divides a DividedPlane, with start and end points contained
 // by the plane, originally defined by a pair of reference points somewhere along its length
@@ -27,6 +31,7 @@ public:
   static Line findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, const Line& startLine = longestLine);
   static DividerLine create(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, const Line& startLine = longestLine);
   void draw(float width) const;
+  void draw(LineConfig config) const;
   float gradient() const;
   bool isSimilarTo(const DividerLine& dividerLine, float distanceTolerance) const;
   bool isOccludedBy(DividerLine dividerLine, float distanceTolerance, float gradientTolerance) const;
@@ -68,4 +73,5 @@ public:
 //  void updateConstrainedDividerLines();
 
   void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth) const;
+  void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, LineConfig constrainedLineConfig) const;
 };

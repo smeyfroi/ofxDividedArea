@@ -98,20 +98,26 @@ DividerLine DividerLine::create(glm::vec2 ref1, glm::vec2 ref2, DividerLines con
 }
 
 void DividerLine::draw(float width) const {
-  if (width <= 0.0) return;
+  ofPushMatrix();
+  ofTranslate(start);
+  ofRotateRad(std::atan2((end.y - start.y), (end.x - start.x)));
+  ofDrawRectangle(0.0, -width/2.0, glm::length(end-start), width);
+  ofPopMatrix();
+}
+
+void DividerLine::draw(LineConfig config) const {
   ofPushMatrix();
   ofTranslate(start);
   ofRotateRad(std::atan2((end.y - start.y), (end.x - start.x)));
 
-//  ofPath path;
-//  path.moveTo(0.0, 0.0);
-//  path.lineTo(glm::distance(start, end), -width/2.0);
-//  path.lineTo(glm::distance(start, end), width/2.0);
-//  path.lineTo(0.0, 0.0);
-//  path.setFilled(true);
-//  path.draw();
-  
-  ofDrawRectangle(0.0, -width/2.0, glm::length(end-start), width);
+  ofPath path;
+  path.moveTo(0.0, -config.minWidth/2.0);
+  path.lineTo(glm::distance(start, end), -config.maxWidth/2.0);
+  path.lineTo(glm::distance(start, end), config.maxWidth/2.0);
+  path.lineTo(0.0, config.minWidth/2.0);
+  path.setFilled(true);
+  path.setFillColor(config.color);
+  path.draw();
   
   ofPopMatrix();
 }
@@ -318,6 +324,24 @@ void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWid
   if (constrainedLineWidth > 0) {
     for (const auto& dl : constrainedDividerLines) {
       dl.draw(constrainedLineWidth);
+    }
+  }
+}
+
+void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, LineConfig constrainedLineConfig) const {
+  if (areaConstraintLineConfig.maxWidth > 0) {
+    for (const auto& dl : areaConstraints) {
+      dl.draw(areaConstraintLineConfig);
+    }
+  }
+  if (unconstrainedLineConfig.maxWidth > 0) {
+    for (const auto& dl : unconstrainedDividerLines) {
+      dl.draw(unconstrainedLineConfig);
+    }
+  }
+  if (constrainedLineConfig.maxWidth > 0) {
+    for (const auto& dl : constrainedDividerLines) {
+      dl.draw(constrainedLineConfig);
     }
   }
 }
