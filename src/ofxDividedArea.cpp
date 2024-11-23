@@ -17,16 +17,17 @@ float DividerLine::yForLineAtX(float x, glm::vec2 start, glm::vec2 end) {
 // y = mx + b
 float DividerLine::xForLineAtY(float y, glm::vec2 start, glm::vec2 end) {
   float m = gradient(start, end);
+  if (std::isinf(m)) return start.x; // vertical so x is a constant
   float b = start.y - (m * start.x);
   return (y - b) / m;
 }
 
 std::optional<glm::vec2> DividerLine::lineToSegmentIntersection(glm::vec2 lStart, glm::vec2 lEnd, glm::vec2 lsStart, glm::vec2 lsEnd) {
   float x, y;
-  if (lsEnd.x - lsStart.x == 0.0) {
+  if (lsEnd.x == lsStart.x) {
     x = lsStart.x;
     y = yForLineAtX(lsStart.x, lStart, lEnd);
-  } else if (lsEnd.y - lsStart.y == 0.0) {
+  } else if (lsEnd.y == lsStart.y) {
     y = lsStart.y;
     x = xForLineAtY(lsStart.y, lStart, lEnd);
   } else {
@@ -40,7 +41,8 @@ std::optional<glm::vec2> DividerLine::lineToSegmentIntersection(glm::vec2 lStart
     y = a * x + c;
   }
   
-  if (x < std::min({lsStart.x, lsEnd.x}) || x > std::max({lsStart.x, lsEnd.x})
+  if (std::isnan(x) || std::isnan(y)
+      || x < std::min({lsStart.x, lsEnd.x}) || x > std::max({lsStart.x, lsEnd.x})
       || y < std::min({lsStart.y, lsEnd.y}) || y > std::max({lsStart.y, lsEnd.y})) {
     return std::nullopt;
   }
@@ -53,7 +55,7 @@ float DividerLine::pointToLineDistance(glm::vec2 point, const DividerLine& line)
 }
 
 // endpoints of one line close to other line and gradients similar
-bool DividerLine::isOccludedBy(DividerLine dividerLine, float distanceTolerance, float gradientTolerance) const {
+bool DividerLine::isOccludedBy(const DividerLine& dividerLine, float distanceTolerance, float gradientTolerance) const {
   float dot = glm::dot(glm::normalize(end-start), glm::normalize(dividerLine.end-dividerLine.start));
   if (std::abs(dot) < gradientTolerance) return false;
   if ((pointToLineDistance(start, dividerLine) < distanceTolerance &&
@@ -63,8 +65,8 @@ bool DividerLine::isOccludedBy(DividerLine dividerLine, float distanceTolerance,
   return false;
 }
 
-Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, const Line& startLine) {
-  // Sort ref1 to be lower x than ref2
+Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine) {
+  // Sort ref1 to be left of ref2
   if (ref1.x > ref2.x) std::swap(ref1, ref2);
 
   glm::vec2 start = startLine.start;
@@ -78,7 +80,7 @@ Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, DividerLines 
     if (auto intersectionResult = lineToSegmentIntersection(ref1, ref2, constraint.start, constraint.end)) {
       glm::vec2 intersection = intersectionResult.value();
       float distRef1New = glm::distance(intersection, ref1);
-      if (intersection.x < ref1.x) {
+      if ((intersection.x < ref1.x) || (intersection.x == ref1.x && intersection.y < ref1.y)) { // handle intersections with horizontal constraints
         float distRef1Start = glm::distance(start, ref1);
         if (distRef1New < distRef1Start) start = intersection;
       } else {
@@ -92,7 +94,7 @@ Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, DividerLines 
 }
 
 // Look for the shortest constrained line segment centred on ref1, optionally starting with a line segment to be constrained
-DividerLine DividerLine::create(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, const Line& startLine) {
+DividerLine DividerLine::create(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine) {
   Line constrainedLine = findEnclosedLine(ref1, ref2, constraints, startLine);
   return DividerLine {ref1, ref2, constrainedLine.start, constrainedLine.end};
 }
@@ -105,7 +107,7 @@ void DividerLine::draw(float width) const {
   ofPopMatrix();
 }
 
-void DividerLine::draw(LineConfig config) const {
+void DividerLine::draw(const LineConfig& config) const {
   ofPushMatrix();
   ofTranslate(start);
   ofRotateRad(std::atan2((end.y - start.y), (end.x - start.x)));
@@ -311,9 +313,9 @@ std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1
 //}
 
 void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth) const {
-  if (areaConstraintLineWidth > 0) {
-    for (const auto& dl : areaConstraints) {
-      dl.draw(areaConstraintLineWidth);
+  if (constrainedLineWidth > 0) {
+    for (const auto& dl : constrainedDividerLines) {
+      dl.draw(constrainedLineWidth);
     }
   }
   if (unconstrainedLineWidth > 0) {
@@ -321,25 +323,25 @@ void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWid
       dl.draw(unconstrainedLineWidth);
     }
   }
-  if (constrainedLineWidth > 0) {
-    for (const auto& dl : constrainedDividerLines) {
-      dl.draw(constrainedLineWidth);
+  if (areaConstraintLineWidth > 0) {
+    for (const auto& dl : areaConstraints) {
+      dl.draw(areaConstraintLineWidth);
     }
   }
 }
 
 void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, LineConfig constrainedLineConfig) const {
-  if (areaConstraintLineConfig.maxWidth > 0) {
+  if (areaConstraintLineConfig.maxWidth > 0.0) {
     for (const auto& dl : areaConstraints) {
       dl.draw(areaConstraintLineConfig);
     }
   }
-  if (unconstrainedLineConfig.maxWidth > 0) {
+  if (unconstrainedLineConfig.maxWidth > 0.0) {
     for (const auto& dl : unconstrainedDividerLines) {
       dl.draw(unconstrainedLineConfig);
     }
   }
-  if (constrainedLineConfig.maxWidth > 0) {
+  if (constrainedLineConfig.maxWidth > 0.0) {
     for (const auto& dl : constrainedDividerLines) {
       dl.draw(constrainedLineConfig);
     }

@@ -28,13 +28,13 @@ public:
   glm::vec2 ref1 {0.0, 0.0}, ref2 {0.0, 0.0};
   glm::vec2 start {0.0, 0.0}, end {0.0, 0.0};
 
-  static Line findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, const Line& startLine = longestLine);
-  static DividerLine create(glm::vec2 ref1, glm::vec2 ref2, DividerLines constraints, const Line& startLine = longestLine);
+  static Line findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine = longestLine);
+  static DividerLine create(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine = longestLine);
   void draw(float width) const;
-  void draw(LineConfig config) const;
+  void draw(const LineConfig& config) const;
   float gradient() const;
   bool isSimilarTo(const DividerLine& dividerLine, float distanceTolerance) const;
-  bool isOccludedBy(DividerLine dividerLine, float distanceTolerance, float gradientTolerance) const;
+  bool isOccludedBy(const DividerLine& dividerLine, float distanceTolerance, float gradientTolerance) const;
   template<typename PT>
   static bool isRefPointUsed(const DividerLines& dividerLines, const PT refPoint);
 
