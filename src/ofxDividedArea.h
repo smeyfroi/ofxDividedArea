@@ -19,6 +19,7 @@ const Line longestLine {
 struct LineConfig {
   float minWidth { 0.0 }, maxWidth { 0.0 };
   ofColor color;
+  float adaptiveWidthFactor { 0.0 };
 };
 
 // A line that divides a DividedPlane, with start and end points contained
@@ -33,6 +34,7 @@ public:
   void draw(float width) const;
   void draw(const LineConfig& config) const;
   float gradient() const;
+  float length() const;
   bool isSimilarTo(const DividerLine& dividerLine, float distanceTolerance) const;
   bool isOccludedBy(const DividerLine& dividerLine, float distanceTolerance, float gradientTolerance) const;
   template<typename PT>

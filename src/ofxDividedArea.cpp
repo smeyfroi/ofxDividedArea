@@ -7,6 +7,10 @@ float DividerLine::gradient(glm::vec2 start, glm::vec2 end) {
   return (end.y - start.y) / (end.x - start.x);
 }
 
+float DividerLine::length() const {
+  return glm::distance(start, end);
+}
+
 // y = mx + b
 float DividerLine::yForLineAtX(float x, glm::vec2 start, glm::vec2 end) {
   float m = gradient(start, end);
@@ -111,12 +115,17 @@ void DividerLine::draw(const LineConfig& config) const {
   ofPushMatrix();
   ofTranslate(start);
   ofRotateRad(std::atan2((end.y - start.y), (end.x - start.x)));
+  
+  float widthFactor = 1.0;
+  if (config.adaptiveWidthFactor > 0.0) {
+    widthFactor = config.adaptiveWidthFactor * length();
+  }
 
   ofPath path;
-  path.moveTo(0.0, -config.minWidth/2.0);
-  path.lineTo(glm::distance(start, end), -config.maxWidth/2.0);
-  path.lineTo(glm::distance(start, end), config.maxWidth/2.0);
-  path.lineTo(0.0, config.minWidth/2.0);
+  path.moveTo(0.0, -widthFactor*config.minWidth/2.0);
+  path.lineTo(glm::distance(start, end), -widthFactor*config.maxWidth/2.0);
+  path.lineTo(glm::distance(start, end), widthFactor*config.maxWidth/2.0);
+  path.lineTo(0.0, widthFactor*config.minWidth/2.0);
   path.setFilled(true);
   path.setFillColor(config.color);
   path.draw();

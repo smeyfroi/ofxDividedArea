@@ -26,7 +26,10 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
   ofSetWindowTitle(ofToString(ofGetFrameRate()));
-  dividedArea.draw(10, 6, 0.5);
+//  dividedArea.draw(10, 6, 0.5);
+  dividedArea.draw({10.0, 10.0, ofColor::white},
+                   {6.0, 6.0, ofColor::white},
+                   {1.0, 1.0, ofColor::white, 6.0*1.0/1000.0});
 //  std::for_each(majorRefPoints.begin(),
 //                majorRefPoints.end(),
 //                [](const auto& p) { return ofDrawCircle(p.x, p.y, 8); });
