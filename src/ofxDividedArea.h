@@ -19,7 +19,7 @@ const Line longestLine {
 struct LineConfig {
   float minWidth { 0.0 }, maxWidth { 0.0 };
   ofColor color;
-  float adaptiveWidthFactor { 0.0 };
+  float adaptiveWidthMaxLength { 0.0 };
 };
 
 // A line that divides a DividedPlane, with start and end points contained

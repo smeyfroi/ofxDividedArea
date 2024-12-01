@@ -117,8 +117,8 @@ void DividerLine::draw(const LineConfig& config) const {
   ofRotateRad(std::atan2((end.y - start.y), (end.x - start.x)));
   
   float widthFactor = 1.0;
-  if (config.adaptiveWidthFactor > 0.0) {
-    widthFactor = config.adaptiveWidthFactor * length();
+  if (config.adaptiveWidthMaxLength > 0.0) {
+    widthFactor = std::fminf(1.0, length() / config.adaptiveWidthMaxLength);
   }
 
   ofPath path;
