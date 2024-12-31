@@ -11,7 +11,7 @@ struct Line {
   glm::vec2 start, end;
 };
 
-const Line longestLine {
+constexpr Line longestLine {
   {std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()},
   {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()}
 };
@@ -35,8 +35,9 @@ public:
   void draw(const LineConfig& config) const;
   float gradient() const;
   float length() const;
-  bool isSimilarTo(const DividerLine& dividerLine, float distanceTolerance) const;
   bool isOccludedBy(const DividerLine& dividerLine, float distanceTolerance, float gradientTolerance) const;
+  bool isOccludedByAny(const DividerLines& dividerLines, float distanceTolerance = 10.0, float gradientTolerance = 0.97) const; // gradients close when dot product > gradientTolerance (dot product == 1 when codirectional)
+
   template<typename PT>
   static bool isRefPointUsed(const DividerLines& dividerLines, const PT refPoint);
 
@@ -63,8 +64,8 @@ public:
   DividerLines unconstrainedDividerLines; // unconstrained, across the entire area
   DividerLines constrainedDividerLines; // constrained by all other divider lines
   
-  bool hasSimilarUnconstrainedDividerLine(const DividerLine& dividerLine) const;
   bool addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
+  
   template<typename PT, typename A>
   bool updateUnconstrainedDividerLines(const std::vector<PT, A>& majorRefPoints);
   

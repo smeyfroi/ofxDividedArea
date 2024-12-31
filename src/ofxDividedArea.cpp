@@ -60,6 +60,7 @@ float DividerLine::pointToLineDistance(glm::vec2 point, const DividerLine& line)
 
 // endpoints of one line close to other line and gradients similar
 bool DividerLine::isOccludedBy(const DividerLine& dividerLine, float distanceTolerance, float gradientTolerance) const {
+  if (&dividerLine == this) return false;
   float dot = glm::dot(glm::normalize(end-start), glm::normalize(dividerLine.end-dividerLine.start));
   if (std::abs(dot) < gradientTolerance) return false;
   if ((pointToLineDistance(start, dividerLine) < distanceTolerance &&
@@ -67,6 +68,12 @@ bool DividerLine::isOccludedBy(const DividerLine& dividerLine, float distanceTol
   if ((pointToLineDistance(dividerLine.start, *this) < distanceTolerance &&
        pointToLineDistance(dividerLine.end, *this) < distanceTolerance)) return true;
   return false;
+}
+
+bool DividerLine::isOccludedByAny(const DividerLines& dividerLines, float distanceTolerance, float gradientTolerance) const {
+  return std::any_of(dividerLines.begin(),
+                     dividerLines.end(),
+                     [&](const auto& dl) { return isOccludedBy(dl, distanceTolerance, gradientTolerance); });
 }
 
 Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine) {
@@ -137,11 +144,6 @@ float DividerLine::gradient() const {
   return (end.y - start.y) / (end.x - start.x);
 }
 
-bool DividerLine::isSimilarTo(const DividerLine& dividerLine, float distanceTolerance) const {
-  return ((glm::distance2(dividerLine.start, start) < distanceTolerance) &&
-          (glm::distance2(dividerLine.end, end) < distanceTolerance));
-}
-
 template<typename PT>
 bool DividerLine::isRefPointUsed(const DividerLines& dividerLines, const PT refPoint) {
   for (const auto& dl : dividerLines) {
@@ -150,21 +152,12 @@ bool DividerLine::isRefPointUsed(const DividerLines& dividerLines, const PT refP
   return false;
 }
 
-
-
-bool DividedArea::hasSimilarUnconstrainedDividerLine(const DividerLine& dividerLine) const {
-  const float distanceTolerance = size.x * 10.0/100.0;
-  return std::any_of(unconstrainedDividerLines.begin(),
-                     unconstrainedDividerLines.end(),
-                     [&](const auto& dl) { return dl.isSimilarTo(dividerLine, distanceTolerance); });
-}
-
 bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
   if (maxUnconstrainedDividerLines >= 0 && unconstrainedDividerLines.size() >= maxUnconstrainedDividerLines) return false;
   if (ref1 == ref2) return false;
   Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
   DividerLine dividerLine {ref1, ref2, lineWithinArea.start, lineWithinArea.end};
-  if (hasSimilarUnconstrainedDividerLine(dividerLine)) return false;
+  if (dividerLine.isOccludedByAny(unconstrainedDividerLines)) return false;
   unconstrainedDividerLines.push_back(dividerLine);
   return true;
 }
@@ -219,7 +212,11 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
       Line updatedLine = DividerLine::findEnclosedLine(newRef1, newRef2, areaConstraints);
       line = DividerLine { newRef1, newRef2, updatedLine.start, updatedLine.end };
 
-      // FIXME: check for occlusion and delete
+      if (line.isOccludedByAny(unconstrainedDividerLines)) {
+        unconstrainedDividerLines.erase(iter);
+        linesChanged = true;
+        break;
+      }
       
     } else if (replacementRef1.has_value()) {
       
@@ -300,13 +297,9 @@ DividerLine DividedArea::createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 
 }
 
 std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
-  const float POINT_DISTANCE_CLOSE = size.x * 1.0/200.0;
-  const float GRADIENT_CLOSE = 0.4; // gradients close when dot product < this constant
   if (ref1 == ref2) return std::nullopt;
   DividerLine dividerLine = createConstrainedDividerLine(ref1, ref2);
-  for (const auto& dl : constrainedDividerLines) {
-    if (dividerLine.isOccludedBy(dl, POINT_DISTANCE_CLOSE, GRADIENT_CLOSE)) return std::nullopt;
-  }
+  if (dividerLine.isOccludedByAny(constrainedDividerLines)) return std::nullopt;
   constrainedDividerLines.push_back(dividerLine);
   return dividerLine;
 }

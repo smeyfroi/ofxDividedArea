@@ -3,6 +3,11 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
 //  ofSetFrameRate(50);
+  
+//      dividedArea.addUnconstrainedDividerLine({100, 100}, {300, 300});
+//      dividedArea.addUnconstrainedDividerLine({100, 100}, {300, 300});
+//      dividedArea.addUnconstrainedDividerLine({110, 110}, {300, 300});
+//      dividedArea.addUnconstrainedDividerLine({50, 100}, {300, 300});
 }
 
 //--------------------------------------------------------------
@@ -27,9 +32,16 @@ void ofApp::update(){
 void ofApp::draw(){
   ofSetWindowTitle(ofToString(ofGetFrameRate()));
 //  dividedArea.draw(10, 6, 0.5);
-  dividedArea.draw({10.0, 10.0, ofColor::white},
-                   {6.0, 6.0, ofColor::white},
-                   {1.0, 1.0, ofColor::white, 6.0*1.0/1000.0});
+//  dividedArea.draw({10.0, 10.0, ofColor::white},
+//                   {6.0, 6.0, ofColor::white},
+//                   {1.0, 1.0, ofColor::white, 6.0*1.0/1000.0});
+  const float maxLineWidth = 10.0;
+  const float minLineWidth = 8.0;
+  const ofFloatColor majorDividerColor { ofColor::white };
+  const ofFloatColor minorDividerColor { ofColor::white };
+  dividedArea.draw({},
+                   { minLineWidth, maxLineWidth, majorDividerColor },
+                   { minLineWidth*0.1f, minLineWidth*0.15f, minorDividerColor, 0.7 });
 //  std::for_each(majorRefPoints.begin(),
 //                majorRefPoints.end(),
 //                [](const auto& p) { return ofDrawCircle(p.x, p.y, 8); });
