@@ -12,8 +12,8 @@ struct Line {
 };
 
 constexpr Line longestLine {
-  {std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()},
-  {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()}
+  { std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest() },
+  { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() }
 };
 
 struct LineConfig {
@@ -36,7 +36,7 @@ public:
   float gradient() const;
   float length() const;
   bool isOccludedBy(const DividerLine& dividerLine, float distanceTolerance, float gradientTolerance) const;
-  bool isOccludedByAny(const DividerLines& dividerLines, float distanceTolerance = 10.0, float gradientTolerance = 0.97) const; // gradients close when dot product > gradientTolerance (dot product == 1 when codirectional)
+  bool isOccludedByAny(const DividerLines& dividerLines, float distanceTolerance, float gradientTolerance) const; // gradients close when dot product > gradientTolerance (dot product == 1 when codirectional)
 
   template<typename PT>
   static bool isRefPointUsed(const DividerLines& dividerLines, const PT refPoint);
