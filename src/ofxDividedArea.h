@@ -28,6 +28,7 @@ class DividerLine {
 public:
   glm::vec2 ref1 {0.0, 0.0}, ref2 {0.0, 0.0};
   glm::vec2 start {0.0, 0.0}, end {0.0, 0.0};
+  int age = 0;
 
   static Line findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine = longestLine);
   static DividerLine create(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine = longestLine);
@@ -75,6 +76,6 @@ public:
   std::optional<DividerLine> addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
 //  void updateConstrainedDividerLines();
 
-  void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth) const;
-  void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, LineConfig constrainedLineConfig) const;
+  void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth, float scale = 1.0) const;
+  void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, LineConfig constrainedLineConfig, float scale = 1.0) const;
 };

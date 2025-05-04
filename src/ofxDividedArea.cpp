@@ -82,6 +82,9 @@ Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const Divider
 
   glm::vec2 start = startLine.start;
   glm::vec2 end = startLine.end;
+  
+  // Start from somewhere random along the line else we always bias towards the left
+  start = ofRandom(1.0) * (end - start);
 
   for (const auto& constraint : constraints) {
     if ((ref1 == constraint.ref1 && ref2 == constraint.ref2) || (ref2 == constraint.ref1 && ref1 == constraint.ref2)) {
@@ -153,7 +156,7 @@ bool DividerLine::isRefPointUsed(const DividerLines& dividerLines, const PT refP
 }
 
 bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
-  const float OCCLUSION_DISTANCE_TOLERANCE = size.x * 1.0/100.0;
+  const float OCCLUSION_DISTANCE_TOLERANCE = size.x * 1.0/80.0;
   const float OCCLUSION_ANGLE_TOLERANCE = 0.95;
   if (maxUnconstrainedDividerLines >= 0 && unconstrainedDividerLines.size() >= maxUnconstrainedDividerLines) return false;
   if (ref1 == ref2) return false;
@@ -190,8 +193,8 @@ template<typename PT, typename A>
 bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majorRefPoints) {
   const float lerpAmount = 0.05; // FIXME: extract somewhere
   const float POINT_DISTANCE_CLOSE = size.x * 1.0/10.0; // FIXME: extract somewhere
-  const float OCCLUSION_DISTANCE_TOLERANCE = size.x * 1.0/100.0;
-  const float OCCLUSION_ANGLE_TOLERANCE = 0.95;
+  const float OCCLUSION_DISTANCE_TOLERANCE = size.x * 5.0/100.0;
+  const float OCCLUSION_ANGLE_TOLERANCE = 0.90;
 
   bool linesChanged = false;
 
@@ -199,6 +202,7 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
   // then replace with a close equivalent or delete it
   for (auto iter = unconstrainedDividerLines.begin(); iter != unconstrainedDividerLines.end(); iter++) {
     auto& line = *iter;
+    line.age++;
     
     std::optional<glm::vec2> replacementRef1 = findClosePoint(majorRefPoints, line.ref1, POINT_DISTANCE_CLOSE);
     std::optional<glm::vec2> replacementRef2 = findClosePoint(majorRefPoints, line.ref2, POINT_DISTANCE_CLOSE);
@@ -320,38 +324,70 @@ std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1
 //  constrainedDividerLines = newDividerLines;
 //}
 
-void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth) const {
-  if (constrainedLineWidth > 0) {
-    for (const auto& dl : constrainedDividerLines) {
-      dl.draw(constrainedLineWidth);
+void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth, float scale) const {
+  ofPushMatrix();
+  ofScale(scale);
+  {
+    if (constrainedLineWidth > 0) {
+      for (const auto& dl : constrainedDividerLines) {
+        dl.draw(constrainedLineWidth);
+      }
+    }
+    if (unconstrainedLineWidth > 0) {
+      bool isStable = false;
+      for (const auto& dl : unconstrainedDividerLines) {
+        if (dl.age > 20) {
+          isStable = true;
+          break;
+        }
+      }
+      if (isStable) {
+        for (const auto& dl : unconstrainedDividerLines) {
+          if (dl.age > 5) dl.draw(unconstrainedLineWidth);
+        }
+      }
+//      for (const auto& dl : unconstrainedDividerLines) {
+//              if (dl.age > 5) dl.draw(unconstrainedLineWidth);
+//        dl.draw(unconstrainedLineWidth);
+//      }
+    }
+    if (areaConstraintLineWidth > 0) {
+      for (const auto& dl : areaConstraints) {
+        dl.draw(areaConstraintLineWidth);
+      }
     }
   }
-  if (unconstrainedLineWidth > 0) {
-    for (const auto& dl : unconstrainedDividerLines) {
-      dl.draw(unconstrainedLineWidth);
-    }
-  }
-  if (areaConstraintLineWidth > 0) {
-    for (const auto& dl : areaConstraints) {
-      dl.draw(areaConstraintLineWidth);
-    }
-  }
+  ofPopMatrix();
 }
 
-void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, LineConfig constrainedLineConfig) const {
-  if (areaConstraintLineConfig.maxWidth > 0.0) {
-    for (const auto& dl : areaConstraints) {
-      dl.draw(areaConstraintLineConfig);
+void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, LineConfig constrainedLineConfig, float scale) const {
+  ofPushMatrix();
+  ofScale(scale);
+  {
+    if (areaConstraintLineConfig.maxWidth > 0.0) {
+      for (const auto& dl : areaConstraints) {
+        dl.draw(areaConstraintLineConfig);
+      }
+    }
+    if (unconstrainedLineConfig.maxWidth > 0.0) {
+      bool isStable = false;
+      for (const auto& dl : unconstrainedDividerLines) {
+        if (dl.age > 20) {
+          isStable = true;
+          break;
+        }
+      }
+      if (isStable) {
+        for (const auto& dl : unconstrainedDividerLines) {
+          if (dl.age > 5) dl.draw(unconstrainedLineConfig);
+        }
+      }
+    }
+    if (constrainedLineConfig.maxWidth > 0.0) {
+      for (const auto& dl : constrainedDividerLines) {
+        dl.draw(constrainedLineConfig);
+      }
     }
   }
-  if (unconstrainedLineConfig.maxWidth > 0.0) {
-    for (const auto& dl : unconstrainedDividerLines) {
-      dl.draw(unconstrainedLineConfig);
-    }
-  }
-  if (constrainedLineConfig.maxWidth > 0.0) {
-    for (const auto& dl : constrainedDividerLines) {
-      dl.draw(constrainedLineConfig);
-    }
-  }
+  ofPopMatrix();
 }
