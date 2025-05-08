@@ -1,11 +1,10 @@
 #pragma once
 
-
 #include "ofMain.h"
 #include "ofxDividedArea.h"
 #include <vector>
 #include "glm/vec2.hpp"
-
+#include "ofxGui.h"
 
 class ofApp: public ofBaseApp{
 public:
@@ -25,4 +24,6 @@ public:
   
   DividedArea dividedArea { {1.0, 1.0}, 7 };
   std::vector<glm::vec2> majorRefPoints;
+  
+  ofxPanel gui;
 };

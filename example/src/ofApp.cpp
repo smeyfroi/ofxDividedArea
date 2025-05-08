@@ -8,6 +8,8 @@ void ofApp::setup(){
 //      dividedArea.addUnconstrainedDividerLine({100, 100}, {300, 300});
 //      dividedArea.addUnconstrainedDividerLine({110, 110}, {300, 300});
 //      dividedArea.addUnconstrainedDividerLine({50, 100}, {300, 300});
+  
+  gui.setup(dividedArea.getParameterGroup());
 }
 
 //--------------------------------------------------------------
@@ -35,8 +37,8 @@ void ofApp::draw(){
 //  dividedArea.draw({10.0, 10.0, ofColor::white},
 //                   {6.0, 6.0, ofColor::white},
 //                   {1.0, 1.0, ofColor::white, 6.0*1.0/1000.0});
-  const float maxLineWidth = 10.0;
-  const float minLineWidth = 8.0;
+  const float maxLineWidth = 16.0;
+  const float minLineWidth = 12.0;
   const ofFloatColor majorDividerColor { ofColor::white };
   const ofFloatColor minorDividerColor { ofColor::white };
   dividedArea.draw({},
@@ -46,6 +48,7 @@ void ofApp::draw(){
 //  std::for_each(majorRefPoints.begin(),
 //                majorRefPoints.end(),
 //                [](const auto& p) { return ofDrawCircle(p.x, p.y, 8); });
+  gui.draw();
 }
 
 //--------------------------------------------------------------

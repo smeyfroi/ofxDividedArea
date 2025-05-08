@@ -4,14 +4,24 @@
 #include "ofPath.h"
 #include "LineGeom.h"
 
+ofParameterGroup& DividedArea::getParameterGroup() {
+  if (parameters.size() == 0) {
+    parameters.setName(getParameterGroupName());
+    parameters.add(lerpAmountParameter);
+    parameters.add(closePointDistanceParameter);
+    parameters.add(occlusionDistanceParameter);
+    parameters.add(occlusionAngleParameter);
+  }
+  return parameters;
+}
+
 bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
-  const float OCCLUSION_DISTANCE_TOLERANCE = size.x * 1.0/80.0;
-  const float OCCLUSION_ANGLE_TOLERANCE = 0.95;
+  float occlusionDistance = occlusionDistanceParameter / size.x;
   if (maxUnconstrainedDividerLines >= 0 && unconstrainedDividerLines.size() >= maxUnconstrainedDividerLines) return false;
   if (ref1 == ref2) return false;
   Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
   DividerLine dividerLine {ref1, ref2, lineWithinArea.start, lineWithinArea.end};
-  if (dividerLine.isOccludedByAny(unconstrainedDividerLines, OCCLUSION_DISTANCE_TOLERANCE, OCCLUSION_ANGLE_TOLERANCE)) return false;
+  if (dividerLine.isOccludedByAny(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) return false;
   unconstrainedDividerLines.push_back(dividerLine);
   return true;
 }
@@ -40,10 +50,8 @@ std::optional<glm::vec2> findClosePoint(const std::vector<PT, A>& points, glm::v
 // to maintain the number required.
 template<typename PT, typename A>
 bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majorRefPoints) {
-  const float lerpAmount = 0.05; // FIXME: extract somewhere
-  const float POINT_DISTANCE_CLOSE = size.x * 1.0/10.0; // FIXME: extract somewhere
-  const float OCCLUSION_DISTANCE_TOLERANCE = size.x * 5.0/100.0;
-  const float OCCLUSION_ANGLE_TOLERANCE = 0.90;
+  float closePointDistance = closePointDistanceParameter / size.x;
+  float occlusionDistance = occlusionDistanceParameter / size.x;
 
   bool linesChanged = false;
 
@@ -53,23 +61,26 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
     auto& line = *iter;
     line.age++;
     
-    std::optional<glm::vec2> replacementRef1 = findClosePoint(majorRefPoints, line.ref1, POINT_DISTANCE_CLOSE);
-    std::optional<glm::vec2> replacementRef2 = findClosePoint(majorRefPoints, line.ref2, POINT_DISTANCE_CLOSE);
+    // find close points that might be replacements
+    std::optional<glm::vec2> replacementRef1 = findClosePoint(majorRefPoints, line.ref1, closePointDistance);
+    std::optional<glm::vec2> replacementRef2 = findClosePoint(majorRefPoints, line.ref2, closePointDistance);
         
     if (replacementRef1.has_value() && replacementRef2.has_value()) {
-      // Still valid if ref points close enough
-      if (glm::distance2(replacementRef1.value(), line.ref1) < POINT_DISTANCE_CLOSE/20.0 && glm::distance2(replacementRef2.value(), line.ref2) < POINT_DISTANCE_CLOSE/20.0) {
-        ofLogNotice() << "similar " << line.ref1.x << ":" << replacementRef1.value().x << " , " << line.ref1.y << ":" << replacementRef1.value().y;
+      // Remain if ref points close enough
+      if (glm::distance2(replacementRef1.value(), line.ref1) < closePointDistance/2.0 && glm::distance2(replacementRef2.value(), line.ref2) < closePointDistance/2.0) {
+//        ofLogNotice() << "similar " << line.ref1.x << ":" << replacementRef1.value().x << " , " << line.ref1.y << ":" << replacementRef1.value().y;
         continue;
       }
-      // Move towards updated ref points
+      // Move towards updated ref points if not close enough to existing
 //      ofLogNotice() << "move " << line.ref1.x << ":" << replacementRef1.value().x << " , " << line.ref1.y << ":" << replacementRef1.value().y;
-      auto newRef1 = glm::mix(line.ref1, replacementRef1.value(), lerpAmount);
-      auto newRef2 = glm::mix(line.ref2, replacementRef2.value(), lerpAmount);
+      float lerp = lerpAmountParameter;
+      auto newRef1 = glm::mix(line.ref1, replacementRef1.value(), lerp);
+      auto newRef2 = glm::mix(line.ref2, replacementRef2.value(), lerp);
+
       Line updatedLine = DividerLine::findEnclosedLine(newRef1, newRef2, areaConstraints);
       line = DividerLine { newRef1, newRef2, updatedLine.start, updatedLine.end };
 
-      if (line.isOccludedByAny(unconstrainedDividerLines, OCCLUSION_DISTANCE_TOLERANCE, OCCLUSION_ANGLE_TOLERANCE)) {
+      if (line.isOccludedByAny(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) {
         unconstrainedDividerLines.erase(iter);
         linesChanged = true;
         break;
@@ -154,11 +165,10 @@ DividerLine DividedArea::createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 
 }
 
 std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
-  const float OCCLUSION_DISTANCE_TOLERANCE = size.x * 1.0/1500.0;
-  const float OCCLUSION_ANGLE_TOLERANCE = 0.95;
+  float occlusionDistance = occlusionDistanceParameter / size.x;
   if (ref1 == ref2) return std::nullopt;
   DividerLine dividerLine = createConstrainedDividerLine(ref1, ref2);
-  if (dividerLine.isOccludedByAny(constrainedDividerLines, OCCLUSION_DISTANCE_TOLERANCE, OCCLUSION_ANGLE_TOLERANCE)) return std::nullopt;
+  if (dividerLine.isOccludedByAny(constrainedDividerLines, occlusionDistance, occlusionAngleParameter)) return std::nullopt;
   constrainedDividerLines.push_back(dividerLine);
   return dividerLine;
 }
