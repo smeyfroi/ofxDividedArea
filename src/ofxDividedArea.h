@@ -27,7 +27,6 @@ public:
   void deleteEarlyConstrainedDividerLines(size_t count);
   DividerLine createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const;
   std::optional<DividerLine> addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
-//  void updateConstrainedDividerLines();
 
   void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth, float scale = 1.0) const;
   void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, LineConfig constrainedLineConfig, float scale = 1.0) const;

@@ -163,16 +163,6 @@ std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1
   return dividerLine;
 }
 
-// This doesn't work as is: need a solver, not a replacer like this, which changes things in bulk with bad ripple effects
-//void DividedArea::updateConstrainedDividerLines() {
-//  auto newDividerLines = constrainedDividerLines;
-//  for (auto& dl : newDividerLines) {
-//    auto newDl = createConstrainedDividerLine(dl.ref1, dl.ref2);
-//    dl = newDl;
-//  }
-//  constrainedDividerLines = newDividerLines;
-//}
-
 void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth, float scale) const {
   ofPushMatrix();
   ofScale(scale);
