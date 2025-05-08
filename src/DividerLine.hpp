@@ -20,6 +20,10 @@ struct LineConfig {
   float minWidth { 0.0 }, maxWidth { 0.0 };
   ofColor color;
   float adaptiveWidthMaxLength { 0.0 };
+  void scale(float scale) {
+    minWidth /= scale;
+    maxWidth /= scale;
+  }
 };
 
 // A line that divides a DividedPlane, with start and end points contained

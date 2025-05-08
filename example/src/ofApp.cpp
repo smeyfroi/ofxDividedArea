@@ -15,7 +15,7 @@ void ofApp::update(){
 //  if (ofGetFrameNum() % 50 == 0) {
     
     // add unconstrained line to join some established points
-    majorRefPoints.insert(majorRefPoints.begin(), {ofRandom(ofGetWindowWidth()-100)+50, ofRandom(ofGetWindowHeight()-100)+50});
+    majorRefPoints.insert(majorRefPoints.begin(), {ofRandom(1.0), ofRandom(1.0)});
     majorRefPoints.resize(std::min((int)majorRefPoints.size(), 14));
     dividedArea.updateUnconstrainedDividerLines(majorRefPoints);
     
@@ -24,8 +24,8 @@ void ofApp::update(){
 //                                            {ofRandom(300)+100, ofRandom(300)+100});
 //  }
 
-  dividedArea.addConstrainedDividerLine({ofRandom(ofGetWindowWidth()-100)+50, ofRandom(ofGetWindowHeight()-100)+50},
-                                        {ofRandom(ofGetWindowWidth()-100)+50, ofRandom(ofGetWindowHeight()-100)+50});
+  dividedArea.addConstrainedDividerLine({ofRandom(1.0), ofRandom(1.0)},
+                                        {ofRandom(1.0), ofRandom(1.0)});
 }
 
 //--------------------------------------------------------------
@@ -41,7 +41,8 @@ void ofApp::draw(){
   const ofFloatColor minorDividerColor { ofColor::white };
   dividedArea.draw({},
                    { minLineWidth, maxLineWidth, majorDividerColor },
-                   { minLineWidth*0.1f, minLineWidth*0.15f, minorDividerColor, 0.7 });
+                   { minLineWidth*0.1f, minLineWidth*0.15f, minorDividerColor, 0.7 },
+                   ofGetWindowWidth());
 //  std::for_each(majorRefPoints.begin(),
 //                majorRefPoints.end(),
 //                [](const auto& p) { return ofDrawCircle(p.x, p.y, 8); });

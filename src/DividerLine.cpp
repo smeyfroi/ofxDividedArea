@@ -35,6 +35,7 @@ Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const Divider
   glm::vec2 end = startLine.end;
   
   // Start from somewhere random along the line else we always bias towards the left
+  // TODO: this still biases towards the left: need to be able to search left and right
   start = ofRandom(1.0) * (end - start);
 
   for (const auto& constraint : constraints) {

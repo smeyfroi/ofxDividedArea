@@ -39,7 +39,7 @@
 		"0FE256A6-71B1-4CD3-ABF1-ADD1EB2AB081" /* DividerLine.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = DividerLine.hpp; sourceTree = "<group>"; };
 		191CD6FA2847E21E0085CBB6 /* of.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = of.entitlements; sourceTree = "<group>"; };
 		191EF70929D778A400F35F26 /* openFrameworks */ = {isa = PBXFileReference; lastKnownFileType = folder; name = openFrameworks; path = ../../../libs/openFrameworks; sourceTree = SOURCE_ROOT; };
-		"49989C01-5B89-418F-9E02-4EA75AFFDA7E" /* ofxDividedArea.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ofxDividedArea.h; sourceTree = "<group>"; };
+		"49989C01-5B89-418F-9E02-4EA75AFFDA7E" /* ofxDividedArea.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxDividedArea.h; sourceTree = "<group>"; };
 		"6FFE9F0B-9A22-43E2-849C-827C4DF5B5A7" /* data */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = folder; name = data; path = bin/data; sourceTree = SOURCE_ROOT; };
 		"A0DACEE8-D809-4609-AA18-38A9FA7D988C" /* DividerLine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DividerLine.cpp; sourceTree = "<group>"; };
 		AAC331652DCD2ADB003A1781 /* LineGeom.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = LineGeom.cpp; sourceTree = "<group>"; };
@@ -75,10 +75,10 @@
 		"A3DD7318-B64C-4F47-AD4D-5ADD25A34BD8" /* src */ = {
 			isa = PBXGroup;
 			children = (
-				"A0DACEE8-D809-4609-AA18-38A9FA7D988C" /* DividerLine.cpp */,
 				"0FE256A6-71B1-4CD3-ABF1-ADD1EB2AB081" /* DividerLine.hpp */,
-				"ED97A3BC-8418-4D5F-B833-C99FD0559C21" /* ofxDividedArea.cpp */,
+				"A0DACEE8-D809-4609-AA18-38A9FA7D988C" /* DividerLine.cpp */,
 				"49989C01-5B89-418F-9E02-4EA75AFFDA7E" /* ofxDividedArea.h */,
+				"ED97A3BC-8418-4D5F-B833-C99FD0559C21" /* ofxDividedArea.cpp */,
 				AAC331672DCD2B41003A1781 /* LineGeom.h */,
 				AAC331652DCD2ADB003A1781 /* LineGeom.cpp */,
 			);

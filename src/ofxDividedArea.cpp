@@ -214,11 +214,13 @@ void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstra
   ofScale(scale);
   {
     if (areaConstraintLineConfig.maxWidth > 0.0) {
+      areaConstraintLineConfig.scale(scale);
       for (const auto& dl : areaConstraints) {
         dl.draw(areaConstraintLineConfig);
       }
     }
     if (unconstrainedLineConfig.maxWidth > 0.0) {
+      unconstrainedLineConfig.scale(scale);
       bool isStable = false;
       for (const auto& dl : unconstrainedDividerLines) {
         if (dl.age > 20) {
@@ -233,6 +235,7 @@ void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstra
       }
     }
     if (constrainedLineConfig.maxWidth > 0.0) {
+      constrainedLineConfig.scale(scale);
       for (const auto& dl : constrainedDividerLines) {
         dl.draw(constrainedLineConfig);
       }
