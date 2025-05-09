@@ -42,7 +42,7 @@ public:
   bool isOccludedByAny(const DividerLines& dividerLines, float distanceTolerance, float gradientTolerance) const; // gradients close when dot product > gradientTolerance (dot product == 1 when codirectional)
 
   template<typename PT>
-  static bool isRefPointUsed(const DividerLines& dividerLines, const PT refPoint);
+  static bool isRefPointUsed(const DividerLines& dividerLines, const PT refPoint, const float closePointDistance);
 
 private:
   static float pointToLineDistance(glm::vec2 point, const DividerLine& line);

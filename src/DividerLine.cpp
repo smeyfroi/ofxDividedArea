@@ -9,10 +9,10 @@ float DividerLine::pointToLineDistance(glm::vec2 point, const DividerLine& line)
   return std::abs( (line.end.y-line.start.y)*point.x - (line.end.x-line.start.x)*point.y + (line.end.x*line.start.y) - (line.end.y*line.start.x) ) / std::sqrt( std::pow(line.end.y-line.start.y,2) + std::pow(line.end.x-line.start.x,2) );
 }
 
-// endpoints of one line close to other line and gradients similar
+// Occluded IF endpoints of one line close to other line AND gradients similar
 bool DividerLine::isOccludedBy(const DividerLine& dividerLine, float distanceTolerance, float gradientTolerance) const {
   if (&dividerLine == this) return false;
-  float dot = glm::dot(glm::normalize(end-start), glm::normalize(dividerLine.end-dividerLine.start));
+  float dot = glm::dot(glm::normalize(end - start), glm::normalize(dividerLine.end - dividerLine.start));
   if (std::abs(dot) < gradientTolerance) return false;
   if ((pointToLineDistance(start, dividerLine) < distanceTolerance &&
        pointToLineDistance(end, dividerLine) < distanceTolerance)) return true;
@@ -22,9 +22,11 @@ bool DividerLine::isOccludedBy(const DividerLine& dividerLine, float distanceTol
 }
 
 bool DividerLine::isOccludedByAny(const DividerLines& dividerLines, float distanceTolerance, float gradientTolerance) const {
-  return std::any_of(dividerLines.begin(),
-                     dividerLines.end(),
-                     [&](const auto& dl) { return isOccludedBy(dl, distanceTolerance, gradientTolerance); });
+  return std::any_of(dividerLines.cbegin(),
+                     dividerLines.cend(),
+                     [&](const auto& dl) {
+    return (isOccludedBy(dl, distanceTolerance, gradientTolerance));
+  });
 }
 
 Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine) {
@@ -59,16 +61,17 @@ Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const Divider
   return Line { start, end };
 }
 
-// Look for the shortest constrained line segment centred on ref1, optionally starting with a line segment to be constrained
+// Look for the shortest constrained line segment passing through (ref1, ref2), optionally starting with a line segment to be constrained
 DividerLine DividerLine::create(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine) {
   Line constrainedLine = findEnclosedLine(ref1, ref2, constraints, startLine);
-  return DividerLine {ref1, ref2, constrainedLine.start, constrainedLine.end};
+  return DividerLine { ref1, ref2, constrainedLine.start, constrainedLine.end };
 }
 
 void DividerLine::draw(float width) const {
   ofPushMatrix();
   ofTranslate(start);
   ofRotateRad(std::atan2((end.y - start.y), (end.x - start.x)));
+  // why no ofSetFill()?
   ofDrawRectangle(0.0, -width/2.0, glm::length(end-start), width);
   ofPopMatrix();
 }
@@ -96,13 +99,16 @@ void DividerLine::draw(const LineConfig& config) const {
 }
 
 template<typename PT>
-bool DividerLine::isRefPointUsed(const DividerLines& dividerLines, const PT refPoint) {
-  for (const auto& dl : dividerLines) {
-    if (glm::distance(dl.ref1, glm::vec2(refPoint)) < 0.05 || glm::distance(dl.ref2, glm::vec2(refPoint)) < 0.05) return true;
-  }
-  return false;
+bool DividerLine::isRefPointUsed(const DividerLines& dividerLines, const PT refPoint, const float closePointDistance) {
+  float tolerance = closePointDistance * closePointDistance;
+  return std::any_of(dividerLines.begin(),
+              dividerLines.end(),
+              [&](const auto& dl) {
+    return (glm::distance2(dl.ref1, glm::vec2(refPoint)) < tolerance
+            || glm::distance2(dl.ref2, glm::vec2(refPoint)) < tolerance);
+  });
 }
 
-template bool DividerLine::isRefPointUsed<glm::vec2>(const DividerLines& dividerLines, const glm::vec2 refPoint);
-template bool DividerLine::isRefPointUsed<glm::vec3>(const DividerLines& dividerLines, const glm::vec3 refPoint);
-template bool DividerLine::isRefPointUsed<glm::vec4>(const DividerLines& dividerLines, const glm::vec4 refPoint);
+template bool DividerLine::isRefPointUsed<glm::vec2>(const DividerLines& dividerLines, const glm::vec2 refPoint, const float closePointDistance);
+template bool DividerLine::isRefPointUsed<glm::vec3>(const DividerLines& dividerLines, const glm::vec3 refPoint, const float closePointDistance);
+template bool DividerLine::isRefPointUsed<glm::vec4>(const DividerLines& dividerLines, const glm::vec4 refPoint, const float closePointDistance);
