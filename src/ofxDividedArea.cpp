@@ -11,6 +11,7 @@ ofParameterGroup& DividedArea::getParameterGroup() {
     parameters.add(closePointDistanceParameter);
     parameters.add(unconstrainedOcclusionDistanceParameter);
     parameters.add(occlusionAngleParameter);
+    parameters.add(maxConstrainedLinesParameter);
   }
   return parameters;
 }
@@ -145,6 +146,7 @@ std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1
   if (ref1 == ref2) return std::nullopt;
   DividerLine dividerLine = createConstrainedDividerLine(ref1, ref2);
   if (dividerLine.isOccludedByAny(constrainedDividerLines, occlusionDistance, occlusionAngleParameter)) return std::nullopt;
+  if (constrainedDividerLines.size() > maxConstrainedLinesParameter) deleteEarlyConstrainedDividerLines(maxConstrainedLinesParameter * 0.05);
   constrainedDividerLines.push_back(dividerLine);
   return dividerLine;
 }
