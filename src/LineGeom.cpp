@@ -47,3 +47,9 @@ std::optional<glm::vec2> lineToSegmentIntersection(glm::vec2 lStart, glm::vec2 l
   }
   return glm::vec2 { x, y };
 }
+
+glm::vec2 endPointForSegment(const glm::vec2& startPoint, float angleRadians, float length) {
+    float deltaX = length * std::cos(angleRadians);
+    float deltaY = length * std::sin(angleRadians);
+  return { startPoint.x + deltaX, startPoint.y + deltaY };
+}

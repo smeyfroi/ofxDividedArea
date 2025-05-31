@@ -10,6 +10,7 @@ ofParameterGroup& DividedArea::getParameterGroup() {
     parameters.add(lerpAmountParameter);
     parameters.add(closePointDistanceParameter);
     parameters.add(unconstrainedOcclusionDistanceParameter);
+    parameters.add(constrainedOcclusionDistanceParameter);
     parameters.add(occlusionAngleParameter);
     parameters.add(maxConstrainedLinesParameter);
   }
@@ -136,8 +137,11 @@ void DividedArea::deleteEarlyConstrainedDividerLines(size_t count) {
 }
 
 DividerLine DividedArea::createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const {
+//  ofLogNotice() << ">>> find constrained from: " << ref1.x << "," << ref1.y << " - " << ref2.x << "," << ref2.y;
   Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
+//  ofLogNotice() << "lineWithinArea: " << lineWithinArea.start.x << "," << lineWithinArea.start.y << " - " << lineWithinArea.end.x << "," << lineWithinArea.end.y;
   Line lineWithinUnconstrainedDividerLines = DividerLine::findEnclosedLine(ref1, ref2, unconstrainedDividerLines, lineWithinArea);
+//  ofLogNotice() << "lineWithinUnconstrainedDividerLines: " << lineWithinUnconstrainedDividerLines.start.x << "," << lineWithinUnconstrainedDividerLines.start.y << " - " << lineWithinUnconstrainedDividerLines.end.x << "," << lineWithinUnconstrainedDividerLines.end.y;
   return DividerLine::create(ref1, ref2, constrainedDividerLines, lineWithinUnconstrainedDividerLines);
 }
 
@@ -148,6 +152,7 @@ std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1
   if (dividerLine.isOccludedByAny(constrainedDividerLines, occlusionDistance, occlusionAngleParameter)) return std::nullopt;
   if (constrainedDividerLines.size() > maxConstrainedLinesParameter) deleteEarlyConstrainedDividerLines(maxConstrainedLinesParameter * 0.05);
   constrainedDividerLines.push_back(dividerLine);
+//  ofLogNotice() << "constrained: " << dividerLine.start.x << "," << dividerLine.start.y << " - " << dividerLine.end.x << "," << dividerLine.end.y;
   return dividerLine;
 }
 

@@ -37,7 +37,7 @@ public:
   ofParameter<float> lerpAmountParameter { "lerpAmount", 0.5, 0.0, 1.0 };
   ofParameter<float> closePointDistanceParameter { "closePoint", 0.03, 0.0, 1.0 };
   ofParameter<float> unconstrainedOcclusionDistanceParameter { "unconstrainedOcclusionDistance", 0.05, 0.0, 0.1 };
-  ofParameter<float> constrainedOcclusionDistanceParameter { "constrainedOcclusionDistance", 0.005, 0.0, 0.1 };
+  ofParameter<float> constrainedOcclusionDistanceParameter { "constrainedOcclusionDistance", 0.003, 0.0, 0.01 };
   ofParameter<float> occlusionAngleParameter { "occlusionAngle", 0.90, 0.0, 1.0 }; // 0.0 if perpendicular, 1.0 if coincident
   ofParameter<int> maxConstrainedLinesParameter { "maxConstrainedLines", 4000, 0, 10000 };
   ofParameterGroup& getParameterGroup();

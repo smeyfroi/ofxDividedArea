@@ -13,9 +13,12 @@ float DividerLine::pointToLineDistance(glm::vec2 point, const DividerLine& line)
 bool DividerLine::isOccludedBy(const DividerLine& dividerLine, float distanceTolerance, float gradientTolerance) const {
   if (&dividerLine == this) return false;
   float dot = glm::dot(glm::normalize(end - start), glm::normalize(dividerLine.end - dividerLine.start));
+//  ofLogNotice() << "dot " << dot << ", tolerance " << gradientTolerance;
   if (std::abs(dot) < gradientTolerance) return false;
+//  ofLogNotice() << "-- " << pointToLineDistance(start, dividerLine) << ", " << pointToLineDistance(end, dividerLine) << ", " << distanceTolerance;
   if ((pointToLineDistance(start, dividerLine) < distanceTolerance &&
        pointToLineDistance(end, dividerLine) < distanceTolerance)) return true;
+//  ofLogNotice() << "   " << pointToLineDistance(dividerLine.start, *this) << ", " << pointToLineDistance(dividerLine.end, *this) << ", " << distanceTolerance;
   if ((pointToLineDistance(dividerLine.start, *this) < distanceTolerance &&
        pointToLineDistance(dividerLine.end, *this) < distanceTolerance)) return true;
   return false;
@@ -38,7 +41,7 @@ Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const Divider
   
   // Start from somewhere random along the line else we always bias towards the left
   // TODO: this still biases towards the left: need to be able to search left and right
-  start = ofRandom(1.0) * (end - start);
+  start = start + ofRandom(1.0) * (end - start);
 
   for (const auto& constraint : constraints) {
     if ((ref1 == constraint.ref1 && ref2 == constraint.ref2) || (ref2 == constraint.ref1 && ref1 == constraint.ref2)) {
