@@ -59,6 +59,8 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
       float lerp = lerpAmountParameter;
       auto newRef1 = glm::mix(line.ref1, replacementRef1.value(), lerp);
       auto newRef2 = glm::mix(line.ref2, replacementRef2.value(), lerp);
+      
+      if (newRef1 == newRef2) continue;
 
       Line updatedLine = DividerLine::findEnclosedLine(newRef1, newRef2, areaConstraints);
       line = DividerLine { newRef1, newRef2, updatedLine.start, updatedLine.end };
@@ -146,9 +148,9 @@ DividerLine DividedArea::createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 
 }
 
 std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
-  float occlusionDistance = constrainedOcclusionDistanceParameter * size.x;
   if (ref1 == ref2) return std::nullopt;
   DividerLine dividerLine = createConstrainedDividerLine(ref1, ref2);
+  float occlusionDistance = constrainedOcclusionDistanceParameter * size.x;
   if (dividerLine.isOccludedByAny(constrainedDividerLines, occlusionDistance, occlusionAngleParameter)) return std::nullopt;
   if (constrainedDividerLines.size() > maxConstrainedLinesParameter) deleteEarlyConstrainedDividerLines(maxConstrainedLinesParameter * 0.05);
   constrainedDividerLines.push_back(dividerLine);

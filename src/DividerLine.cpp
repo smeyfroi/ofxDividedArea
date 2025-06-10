@@ -90,6 +90,8 @@ void DividerLine::draw(const LineConfig& config) const {
   }
 
   ofPath path;
+//  ofLogNotice() << start << " | " << end;
+//  ofLogNotice() << glm::vec2{0.0, -widthFactor*config.minWidth/2.0} << " | " << glm::vec2{glm::distance(start, end), -widthFactor*config.minWidth/2.0} << " | " << glm::vec2{glm::distance(start, end), widthFactor*config.maxWidth/2.0} << " | " << glm::vec2{0.0, widthFactor*config.maxWidth/2.0};
   path.moveTo(0.0, -widthFactor*config.minWidth/2.0);
   path.lineTo(glm::distance(start, end), -widthFactor*config.minWidth/2.0);
   path.lineTo(glm::distance(start, end), widthFactor*config.maxWidth/2.0);
