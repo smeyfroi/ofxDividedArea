@@ -91,9 +91,9 @@ void DividerLine::draw(const LineConfig& config) const {
 
   ofPath path;
   path.moveTo(0.0, -widthFactor*config.minWidth/2.0);
-  path.lineTo(glm::distance(start, end), -widthFactor*config.maxWidth/2.0);
+  path.lineTo(glm::distance(start, end), -widthFactor*config.minWidth/2.0);
   path.lineTo(glm::distance(start, end), widthFactor*config.maxWidth/2.0);
-  path.lineTo(0.0, widthFactor*config.minWidth/2.0);
+  path.lineTo(0.0, widthFactor*config.maxWidth/2.0);
   path.setFilled(true);
   path.setFillColor(config.color);
   path.draw();
