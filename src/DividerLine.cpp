@@ -32,17 +32,41 @@ bool DividerLine::isOccludedByAny(const DividerLines& dividerLines, float distan
   });
 }
 
+// ref1 and ref2 are points on the constraining line that the intersection is with
+void shrinkLineToIntersectionTopLeft(glm::vec2& start, glm::vec2& end, const glm::vec2& intersection, const glm::vec2& ref1, const glm::vec2& ref2) {
+  float distRef1New = glm::distance2(intersection, ref1);
+  if ((intersection.x < ref1.x) || (intersection.x == ref1.x && intersection.y < ref1.y)) { // handle intersections with horizontal constraints
+    float distRef1Start = glm::distance2(start, ref1);
+    if (distRef1New < distRef1Start) start = intersection;
+  } else {
+    float distRef1End = glm::distance2(end, ref1);
+    if (distRef1New < distRef1End) end = intersection;
+  }
+}
+
+// ref1 and ref2 are points on the constraining line that the intersection is with
+void shrinkLineToIntersectionBotRight(glm::vec2& start, glm::vec2& end, const glm::vec2& intersection, const glm::vec2& ref1, const glm::vec2& ref2) {
+  float distRef2New = glm::distance2(intersection, ref2);
+  if ((intersection.x > ref2.x) || (intersection.x == ref2.x && intersection.y > ref2.y)) { // handle intersections with horizontal constraints
+    float distRef2End = glm::distance2(end, ref2);
+    if (distRef2New < distRef2End) end = intersection;
+  } else {
+    float distRef2Start = glm::distance2(start, ref2);
+    if (distRef2New < distRef2Start) start = intersection;
+  }
+}
+
 Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine) {
-  // Sort ref1 to be left of ref2
-  if (ref1.x > ref2.x) std::swap(ref1, ref2);
+  bool intersectTopLeft = true;
+  if (ref1.x > ref2.x) {
+    // Sort ref1 to be always left of ref2
+    std::swap(ref1, ref2);
+    intersectTopLeft = false;
+  }
 
   glm::vec2 start = startLine.start;
   glm::vec2 end = startLine.end;
   
-  // Start from somewhere random along the line else we always bias towards the left
-  // TODO: this still biases towards the left: need to be able to search left and right
-  start = start + ofRandom(1.0) * (end - start);
-
   for (const auto& constraint : constraints) {
     if ((ref1 == constraint.ref1 && ref2 == constraint.ref2) || (ref2 == constraint.ref1 && ref1 == constraint.ref2)) {
       // don't constrain by self
@@ -50,13 +74,10 @@ Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const Divider
     }
     if (auto intersectionResult = lineToSegmentIntersection(ref1, ref2, constraint.start, constraint.end)) {
       glm::vec2 intersection = intersectionResult.value();
-      float distRef1New = glm::distance2(intersection, ref1);
-      if ((intersection.x < ref1.x) || (intersection.x == ref1.x && intersection.y < ref1.y)) { // handle intersections with horizontal constraints
-        float distRef1Start = glm::distance2(start, ref1);
-        if (distRef1New < distRef1Start) start = intersection;
+      if (intersectTopLeft) {
+        shrinkLineToIntersectionTopLeft(start, end, intersection, ref1, ref2);
       } else {
-        float distRef1End = glm::distance2(end, ref1);
-        if (distRef1New < distRef1End) end = intersection;
+        shrinkLineToIntersectionBotRight(start, end, intersection, ref1, ref2);
       }
     }
   }
@@ -106,9 +127,7 @@ void DividerLine::draw(const LineConfig& config) const {
 template<typename PT>
 bool DividerLine::isRefPointUsed(const DividerLines& dividerLines, const PT refPoint, const float closePointDistance) {
   float tolerance = closePointDistance * closePointDistance;
-  return std::any_of(dividerLines.begin(),
-              dividerLines.end(),
-              [&](const auto& dl) {
+  return std::any_of(dividerLines.begin(), dividerLines.end(), [&](const auto& dl) {
     return (glm::distance2(dl.ref1, glm::vec2(refPoint)) < tolerance
             || glm::distance2(dl.ref2, glm::vec2(refPoint)) < tolerance);
   });

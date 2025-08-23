@@ -26,8 +26,8 @@ struct LineConfig {
   }
 };
 
-// A line that divides a DividedPlane, with start and end points contained
-// by the plane, originally defined by a pair of reference points somewhere along its length
+// A line with start and end points contained by constraining lines,
+// originally defined by a pair of reference points somewhere along its length
 class DividerLine {
 public:
   glm::vec2 ref1 {0.0, 0.0}, ref2 {0.0, 0.0};
