@@ -39,7 +39,7 @@ public:
   ofParameter<float> unconstrainedOcclusionDistanceParameter { "unconstrainedOcclusionDistance", 0.05, 0.0, 0.1 };
   ofParameter<float> constrainedOcclusionDistanceParameter { "constrainedOcclusionDistance", 0.003, 0.0, 0.01 };
   ofParameter<float> occlusionAngleParameter { "occlusionAngle", 0.90, 0.0, 1.0 }; // 0.0 if perpendicular, 1.0 if coincident
-  ofParameter<int> maxConstrainedLinesParameter { "maxConstrainedLines", 4000, 0, 10000 };
+  ofParameter<int> maxConstrainedLinesParameter { "maxConstrainedLines", 500, 0, 10000 }; // TODO: 1000 is too slow until the mesh refactor
   ofParameterGroup& getParameterGroup();
 };
 
