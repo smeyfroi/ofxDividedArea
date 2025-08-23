@@ -92,35 +92,36 @@ DividerLine DividerLine::create(glm::vec2 ref1, glm::vec2 ref2, const DividerLin
 }
 
 void DividerLine::draw(float width) const {
+  if (mesh.getNumVertices() == 0) {
+    mesh = ofMesh::plane(width, glm::distance(start, end), 2, 2, OF_PRIMITIVE_TRIANGLES);
+  }
   ofPushMatrix();
   ofTranslate(start);
   ofRotateRad(std::atan2((end.y - start.y), (end.x - start.x)));
-  // why no ofSetFill()?
-  ofDrawRectangle(0.0, -width/2.0, glm::length(end-start), width);
+  ofTranslate(0.0, -width / 2.0);
+  mesh.draw();
   ofPopMatrix();
 }
 
 void DividerLine::draw(const LineConfig& config) const {
+  if (mesh.getNumVertices() == 0) {
+    float widthFactor = 1.0;
+    if (config.adaptiveWidthMaxLength > 0.0) {
+      widthFactor = std::fminf(1.0, glm::distance(start, end) / config.adaptiveWidthMaxLength);
+    }
+    ofPath path;
+    path.moveTo(0.0, -widthFactor*config.minWidth/2.0);
+    path.lineTo(glm::distance(start, end), -widthFactor*config.maxWidth/2.0);
+    path.lineTo(glm::distance(start, end), widthFactor*config.maxWidth/2.0);
+    path.lineTo(0.0, widthFactor*config.minWidth/2.0);
+    mesh = path.getTessellation();
+  }
+  
   ofPushMatrix();
   ofTranslate(start);
   ofRotateRad(std::atan2((end.y - start.y), (end.x - start.x)));
-  
-  float widthFactor = 1.0;
-  if (config.adaptiveWidthMaxLength > 0.0) {
-    widthFactor = std::fminf(1.0, glm::distance(start, end) / config.adaptiveWidthMaxLength);
-  }
-
-  ofPath path;
-//  ofLogNotice() << start << " | " << end;
-//  ofLogNotice() << glm::vec2{0.0, -widthFactor*config.minWidth/2.0} << " | " << glm::vec2{glm::distance(start, end), -widthFactor*config.minWidth/2.0} << " | " << glm::vec2{glm::distance(start, end), widthFactor*config.maxWidth/2.0} << " | " << glm::vec2{0.0, widthFactor*config.maxWidth/2.0};
-  path.moveTo(0.0, -widthFactor*config.minWidth/2.0);
-  path.lineTo(glm::distance(start, end), -widthFactor*config.minWidth/2.0);
-  path.lineTo(glm::distance(start, end), widthFactor*config.maxWidth/2.0);
-  path.lineTo(0.0, widthFactor*config.maxWidth/2.0);
-  path.setFilled(true);
-  path.setFillColor(config.color);
-  path.draw();
-  
+  ofSetColor(config.color);
+  mesh.draw();
   ofPopMatrix();
 }
 

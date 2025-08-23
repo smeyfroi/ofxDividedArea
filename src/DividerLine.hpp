@@ -3,6 +3,7 @@
 #include "glm/vec2.hpp"
 #include <vector>
 #include "ofColor.h"
+#include "ofVboMesh.h"
 
 class DividerLine;
 using DividerLines = std::vector<DividerLine>;
@@ -33,6 +34,7 @@ public:
   glm::vec2 ref1 {0.0, 0.0}, ref2 {0.0, 0.0};
   glm::vec2 start {0.0, 0.0}, end {0.0, 0.0};
   int age = 0;
+  mutable ofVboMesh mesh;
 
   static Line findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine = longestLine);
   static DividerLine create(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine = longestLine);
