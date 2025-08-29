@@ -37,8 +37,8 @@ public:
   ofParameter<float> lerpAmountParameter { "lerpAmount", 0.5, 0.0, 1.0 };
   ofParameter<float> closePointDistanceParameter { "closePoint", 0.03, 0.0, 1.0 };
   ofParameter<float> unconstrainedOcclusionDistanceParameter { "unconstrainedOcclusionDistance", 0.05, 0.0, 0.1 };
-  ofParameter<float> constrainedOcclusionDistanceParameter { "constrainedOcclusionDistance", 0.001, 0.0, 0.01 };
-  ofParameter<float> occlusionAngleParameter { "occlusionAngle", 0.98, 0.0, 1.0 }; // 0.0 if perpendicular, 1.0 if coincident
+  ofParameter<float> constrainedOcclusionDistanceParameter { "constrainedOcclusionDistance", 0.0015, 0.0, 0.01 };
+  ofParameter<float> occlusionAngleParameter { "occlusionAngle", 0.97, 0.0, 1.0 }; // 0.0 if perpendicular, 1.0 if coincident
   ofParameter<int> maxConstrainedLinesParameter { "maxConstrainedLines", 500, 0, 10000 }; // TODO: 1000 is too slow until the mesh refactor
   ofParameterGroup& getParameterGroup();
 };
