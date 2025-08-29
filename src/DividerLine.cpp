@@ -32,36 +32,11 @@ bool DividerLine::isOccludedByAny(const DividerLines& dividerLines, float distan
   });
 }
 
-// ref1 and ref2 are points on the constraining line that the intersection is with
-void shrinkLineToIntersectionTopLeft(glm::vec2& start, glm::vec2& end, const glm::vec2& intersection, const glm::vec2& ref1, const glm::vec2& ref2) {
-  float distRef1New = glm::distance2(intersection, ref1);
-  if ((intersection.x < ref1.x) || (intersection.x == ref1.x && intersection.y < ref1.y)) { // handle intersections with horizontal constraints
-    float distRef1Start = glm::distance2(start, ref1);
-    if (distRef1New < distRef1Start) start = intersection;
-  } else {
-    float distRef1End = glm::distance2(end, ref1);
-    if (distRef1New < distRef1End) end = intersection;
-  }
-}
-
-// ref1 and ref2 are points on the constraining line that the intersection is with
-void shrinkLineToIntersectionBotRight(glm::vec2& start, glm::vec2& end, const glm::vec2& intersection, const glm::vec2& ref1, const glm::vec2& ref2) {
-  float distRef2New = glm::distance2(intersection, ref2);
-  if ((intersection.x > ref2.x) || (intersection.x == ref2.x && intersection.y > ref2.y)) { // handle intersections with horizontal constraints
-    float distRef2End = glm::distance2(end, ref2);
-    if (distRef2New < distRef2End) end = intersection;
-  } else {
-    float distRef2Start = glm::distance2(start, ref2);
-    if (distRef2New < distRef2Start) start = intersection;
-  }
-}
-
+// Shrink the startLine towards a reference point to fit inside the constraints
 Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine) {
-  bool intersectTopLeft = true;
-  if (ref1.x > ref2.x) {
-    // Sort ref1 to be always left of ref2
-    std::swap(ref1, ref2);
-    intersectTopLeft = false;
+  glm::vec2 shrinkTowards = ref1;
+  if (ref1.x > ref2.x) { // deterministic random choice to balance resulting lines
+    shrinkTowards = ref2;
   }
 
   glm::vec2 start = startLine.start;
@@ -69,16 +44,11 @@ Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const Divider
   
   for (const auto& constraint : constraints) {
     if ((ref1 == constraint.ref1 && ref2 == constraint.ref2) || (ref2 == constraint.ref1 && ref1 == constraint.ref2)) {
-      // don't constrain by self
-      continue;
+      continue; // don't constrain by self
     }
     if (auto intersectionResult = lineToSegmentIntersection(ref1, ref2, constraint.start, constraint.end)) {
       glm::vec2 intersection = intersectionResult.value();
-      if (intersectTopLeft) {
-        shrinkLineToIntersectionTopLeft(start, end, intersection, ref1, ref2);
-      } else {
-        shrinkLineToIntersectionBotRight(start, end, intersection, ref1, ref2);
-      }
+      shrinkLineToIntersectionAroundReferencePoint(start, end, intersection, shrinkTowards);
     }
   }
   

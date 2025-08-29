@@ -12,9 +12,10 @@ struct Line {
   glm::vec2 start, end;
 };
 
+// NOTE: if this is too large then precision issues cause trouble
 constexpr Line longestLine {
-  { std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest() },
-  { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() }
+  { -1e4, -1e4 },
+  { 1e4, 1e4 }
 };
 
 struct LineConfig {
