@@ -6,19 +6,33 @@
 
 // https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
 float DividerLine::pointToLineDistance(glm::vec2 point, const DividerLine& line) {
-  return std::abs( (line.end.y-line.start.y)*point.x - (line.end.x-line.start.x)*point.y + (line.end.x*line.start.y) - (line.end.y*line.start.x) ) / std::sqrt( std::pow(line.end.y-line.start.y,2) + std::pow(line.end.x-line.start.x,2) );
+  float dx = line.end.x - line.start.x;
+  float dy = line.end.y - line.start.y;
+  float denom = std::sqrt(dx*dx + dy*dy);
+  if (denom == 0.0f) {
+    return glm::distance(point, line.start);
+  }
+  return std::abs(dy*point.x - dx*point.y + (line.end.x*line.start.y) - (line.end.y*line.start.x)) / denom;
 }
 
 // Occluded IF endpoints of one line close to other line AND gradients similar
 bool DividerLine::isOccludedBy(const DividerLine& dividerLine, float distanceTolerance, float gradientTolerance) const {
   if (&dividerLine == this) return false;
-  float dot = glm::dot(glm::normalize(end - start), glm::normalize(dividerLine.end - dividerLine.start));
-//  ofLogNotice() << "dot " << dot << ", tolerance " << gradientTolerance;
+
+  glm::vec2 d1 = end - start;
+  glm::vec2 d2 = dividerLine.end - dividerLine.start;
+  float len1 = glm::length(d1);
+  float len2 = glm::length(d2);
+  if (len1 < 1e-6f || len2 < 1e-6f) {
+    return false; // zero-length cannot occlude
+  }
+
+  float dot = glm::dot(d1 / len1, d2 / len2);
   if (std::abs(dot) < gradientTolerance) return false;
-//  ofLogNotice() << "-- " << pointToLineDistance(start, dividerLine) << ", " << pointToLineDistance(end, dividerLine) << ", " << distanceTolerance;
+
   if ((pointToLineDistance(start, dividerLine) < distanceTolerance &&
        pointToLineDistance(end, dividerLine) < distanceTolerance)) return true;
-//  ofLogNotice() << "   " << pointToLineDistance(dividerLine.start, *this) << ", " << pointToLineDistance(dividerLine.end, *this) << ", " << distanceTolerance;
+
   if ((pointToLineDistance(dividerLine.start, *this) < distanceTolerance &&
        pointToLineDistance(dividerLine.end, *this) < distanceTolerance)) return true;
   return false;

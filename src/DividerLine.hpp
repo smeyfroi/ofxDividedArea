@@ -47,6 +47,6 @@ public:
   template<typename PT>
   static bool isRefPointUsed(const DividerLines& dividerLines, const PT refPoint, const float closePointDistance);
 
-private:
+//private:
   static float pointToLineDistance(glm::vec2 point, const DividerLine& line);
 };

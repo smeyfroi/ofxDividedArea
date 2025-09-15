@@ -1,0 +1,1 @@
+# Use default openFrameworks settings
