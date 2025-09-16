@@ -5,11 +5,24 @@
 #include "ofColor.h"
 #include "DividerLine.hpp"
 #include "ofxGui.h"
+#include "ofVbo.h"
+#include "ofBufferObject.h"
+#include "ofShader.h"
+#include "ofMesh.h"
+#include "LineGeom.h"
+
+struct DividerInstance {
+  glm::vec2 p0;
+  glm::vec2 p1;
+  float width;
+  float style;
+  ofFloatColor color;
+};
 
 class DividedArea {
 public:
   glm::vec2 size { 1.0, 1.0 };
-  int maxUnconstrainedDividerLines { -1 };
+  int maxUnconstrainedDividerLines;
   DividerLines areaConstraints {
     {{0.0, 0.0}, {size.x, 0.0}, {0.0, 0.0}, {size.x, 0.0}},
     {{size.x, 0.0}, size, {size.x, 0.0}, size},
@@ -20,7 +33,6 @@ public:
   DividerLines constrainedDividerLines; // constrained by all other divider lines
   
   bool addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
-  
   template<typename PT, typename A>
   bool updateUnconstrainedDividerLines(const std::vector<PT, A>& majorRefPoints);
   
@@ -39,32 +51,25 @@ public:
   ofParameter<float> unconstrainedOcclusionDistanceParameter { "unconstrainedOcclusionDistance", 0.05, 0.0, 0.1 };
   ofParameter<float> constrainedOcclusionDistanceParameter { "constrainedOcclusionDistance", 0.0015, 0.0, 0.01 };
   ofParameter<float> occlusionAngleParameter { "occlusionAngle", 0.97, 0.0, 1.0 }; // 0.0 if perpendicular, 1.0 if coincident
-  ofParameter<int> maxConstrainedLinesParameter { "maxConstrainedLines", 500, 0, 10000 }; // TODO: 1000 is too slow until the mesh refactor
+  ofParameter<int> maxConstrainedLinesParameter { "maxConstrainedLines", 1000, 0, 10000 };
   ofParameterGroup& getParameterGroup();
+
+  // Instanced rendering data
+  void drawInstanced(float scale = 1.0f) const;
+  void setMaxDividers(int max);
+  void clearInstanced();
+  void addDividerInstanced(const glm::vec2& a, const glm::vec2& b, float width, bool taper, const ofFloatColor& col);
+
+private:
+  // instance ring buffer
+  std::vector<DividerInstance> instances;
+  mutable ofBufferObject instanceBO;
+  mutable ofVbo vbo;
+  ofMesh quad;
+  ofShader shader;
+  int instanceCapacity = 0;
+  mutable int instanceCount = 0;
+  int head = 0;
+  mutable bool instancesDirty = false;
+
 };
-
-
-
-template<typename PT, typename A>
-bool containsPoint(const std::vector<PT, A>& points, glm::vec2 point) {
-  return std::any_of(points.begin(),
-                     points.end(),
-                     [&](const auto& p) {
-    return (glm::vec2(p) == point);
-  });
-}
-
-template<typename PT, typename A>
-std::optional<glm::vec2> findClosePoint(const std::vector<PT, A>& points, glm::vec2 point, float tolerance) {
-  float tolerance2 = tolerance * tolerance;
-  auto iter = std::find_if(points.begin(),
-                           points.end(),
-                           [&](const auto& p) {
-    return glm::distance2(glm::vec2(p), point) < tolerance2;
-  });
-  if (iter != points.end()) {
-    return *iter;
-  } else {
-    return std::nullopt;
-  }
-}

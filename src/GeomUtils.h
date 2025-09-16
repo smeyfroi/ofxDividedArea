@@ -15,6 +15,7 @@
 
 namespace geom {
   constexpr float EPS = 1e-6f;
+
   inline float cross2(const glm::vec2& a, const glm::vec2& b) { return a.x*b.y - a.y*b.x; }
   inline float dot2(const glm::vec2& a, const glm::vec2& b) { return a.x*b.x + a.y*b.y; }
 
@@ -57,4 +58,29 @@ namespace geom {
     if (b0 > b1) std::swap(b0, b1);
     return !(a1 < b0 - eps || b1 < a0 - eps);
   }
+
+  template<typename PT, typename A>
+  bool containsPoint(const std::vector<PT, A>& points, glm::vec2 point) {
+    return std::any_of(points.begin(),
+                       points.end(),
+                       [&](const auto& p) {
+      return (glm::vec2(p) == point);
+    });
+  }
+
+  template<typename PT, typename A>
+  std::optional<glm::vec2> findClosePoint(const std::vector<PT, A>& points, glm::vec2 point, float tolerance) {
+    float tolerance2 = tolerance * tolerance;
+    auto iter = std::find_if(points.begin(),
+                             points.end(),
+                             [&](const auto& p) {
+      return glm::distance2(glm::vec2(p), point) < tolerance2;
+    });
+    if (iter != points.end()) {
+      return *iter;
+    } else {
+      return std::nullopt;
+    }
+  }
+
 }

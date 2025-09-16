@@ -22,7 +22,7 @@ public:
   void dragEvent(ofDragInfo dragInfo);
   void gotMessage(ofMessage msg);
   
-  DividedArea dividedArea { {1.0, 1.0}, 7 };
+  DividedArea dividedArea;
   std::vector<glm::vec2> majorRefPoints;
   
   ofxPanel gui;

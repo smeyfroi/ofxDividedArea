@@ -3,6 +3,14 @@
 #include "ofMath.h"
 #include "ofPath.h"
 #include "LineGeom.h"
+#include "GeomUtils.h"
+
+static constexpr int ATTR_LOC_POS = 0;
+static constexpr int ATTR_LOC_P0 = 1;
+static constexpr int ATTR_LOC_P1 = 2;
+static constexpr int ATTR_LOC_WIDTH = 3;
+static constexpr int ATTR_LOC_STYLE = 4;
+static constexpr int ATTR_LOC_COLOR = 5;
 
 ofParameterGroup& DividedArea::getParameterGroup() {
   if (parameters.size() == 0) {
@@ -46,8 +54,8 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
 //    line.age = std::min(10, line.age + 1);
     
     // find close points that might be replacements
-    std::optional<glm::vec2> replacementRef1 = findClosePoint(majorRefPoints, line.ref1, closePointDistance);
-    std::optional<glm::vec2> replacementRef2 = findClosePoint(majorRefPoints, line.ref2, closePointDistance);
+    std::optional<glm::vec2> replacementRef1 = geom::findClosePoint(majorRefPoints, line.ref1, closePointDistance);
+    std::optional<glm::vec2> replacementRef2 = geom::findClosePoint(majorRefPoints, line.ref2, closePointDistance);
     
     if (replacementRef1.has_value() && replacementRef2.has_value()) {
       
@@ -154,32 +162,108 @@ std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1
   return dividerLine;
 }
 
-void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth, float scale) const {
+void DividedArea::setMaxDividers(int max) {
+  instanceCapacity = std::max(0, max);
+  instances.resize(instanceCapacity);
+  head = 0;
+  instanceCount = 0;
+  if (instanceCapacity > 0 && !instanceBO.isAllocated()) {
+    instanceBO.allocate(instances, GL_DYNAMIC_DRAW);
+  } else if (instanceCapacity > 0) {
+    instanceBO.updateData(0, instanceCapacity * (int)sizeof(DividerInstance), instances.data());
+  }
+  instancesDirty = true;
+
+  // build unit quad and vbo only once
+  if (quad.getNumVertices() == 0) {
+    quad.setMode(OF_PRIMITIVE_TRIANGLE_STRIP);
+    quad.addVertex({-0.5f, -0.5f, 0});
+    quad.addVertex({ 0.5f, -0.5f, 0});
+    quad.addVertex({-0.5f,  0.5f, 0});
+    quad.addVertex({ 0.5f,  0.5f, 0});
+    vbo.setMesh(quad, GL_STATIC_DRAW);
+
+    // bind per-instance attributes
+    vbo.bind();
+    GLsizei stride = sizeof(DividerInstance);
+    std::size_t offP0    = offsetof(DividerInstance, p0);
+    std::size_t offP1    = offsetof(DividerInstance, p1);
+    std::size_t offWidth = offsetof(DividerInstance, width);
+    std::size_t offStyle = offsetof(DividerInstance, style);
+    std::size_t offColor = offsetof(DividerInstance, color);
+
+    vbo.setAttributeBuffer(1, instanceBO, 2, stride, offP0);
+    vbo.setAttributeDivisor(1, 1);
+    vbo.setAttributeBuffer(2, instanceBO, 2, stride, offP1);
+    vbo.setAttributeDivisor(2, 1);
+    vbo.setAttributeBuffer(3, instanceBO, 1, stride, offWidth);
+    vbo.setAttributeDivisor(3, 1);
+    vbo.setAttributeBuffer(4, instanceBO, 1, stride, offStyle);
+    vbo.setAttributeDivisor(4, 1);
+    vbo.setAttributeBuffer(5, instanceBO, 4, stride, offColor);
+    vbo.setAttributeDivisor(5, 1);
+    vbo.unbind();
+  }
+
+  if (!shader.isLoaded()) {
+    shader.load("shadersGL3/dividers_instanced");
+  }
+}
+
+void DividedArea::clearInstanced() {
+  head = 0;
+  instanceCount = 0;
+  instancesDirty = true;
+}
+
+void DividedArea::addDividerInstanced(const glm::vec2& a, const glm::vec2& b, float width, bool taper, const ofFloatColor& col) {
+  if (instanceCapacity == 0) return;
+  if (instanceCount == instanceCapacity) {
+    head = (head + 1) % instanceCapacity;
+    instanceCount--;
+  }
+  int idx = (head + instanceCount) % instanceCapacity;
+  instances[idx].p0 = a;
+  instances[idx].p1 = b;
+  instances[idx].width = width;
+  instances[idx].style = taper ? 1.0f : 0.0f;
+  instances[idx].color = col;
+  instanceCount++;
+  instancesDirty = true;
+}
+
+static void syncInstanceBufferIfNeeded(const std::vector<DividerInstance>& instances, int head, int count, int capacity, ofBufferObject& bo) {
+  if (count <= 0) return;
+  int tail = (head + count) % capacity;
+  if (!bo.isAllocated()) return;
+  if (head < tail) {
+    bo.updateData(0, count * (int)sizeof(DividerInstance), &instances[head]);
+  } else {
+    int firstCount = capacity - head;
+    bo.updateData(0, firstCount * (int)sizeof(DividerInstance), &instances[head]);
+    bo.updateData(firstCount * (int)sizeof(DividerInstance), tail * (int)sizeof(DividerInstance), &instances[0]);
+  }
+}
+
+void DividedArea::drawInstanced(float scale) const {
+  if (instanceCount == 0) return;
+  if (!shader.isLoaded()) return;
+
   ofPushMatrix();
   ofScale(scale);
-  {
-    if (constrainedLineWidth > 0) {
-      std::for_each(constrainedDividerLines.begin(),
-                    constrainedDividerLines.end(),
-                    [&](const auto& dl) {
-        dl.draw(constrainedLineWidth / scale);
-      });
-    }
-    if (unconstrainedLineWidth > 0) {
-      std::for_each(unconstrainedDividerLines.begin(),
-                    unconstrainedDividerLines.end(),
-                    [&](const auto& dl) {
-        dl.draw(unconstrainedLineWidth / scale);
-      });
-    }
-    if (areaConstraintLineWidth > 0) {
-      std::for_each(areaConstraints.begin(),
-                    areaConstraints.end(),
-                    [&](const auto& dl) {
-        dl.draw(areaConstraintLineWidth / scale);
-      });
-    }
+
+  if (instancesDirty) {
+    syncInstanceBufferIfNeeded(instances, head, instanceCount, instanceCapacity, instanceBO);
+    instancesDirty = false;
   }
+
+  ofEnableBlendMode(OF_BLENDMODE_ALPHA);
+  shader.begin();
+  vbo.bind();
+  vbo.drawInstanced(OF_MESH_FILL, 0, 4, instanceCount);
+  vbo.unbind();
+  shader.end();
+
   ofPopMatrix();
 }
 
@@ -209,6 +293,35 @@ void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstra
                     constrainedDividerLines.end(),
                     [&](const auto& dl) {
         dl.draw(constrainedLineConfig);
+      });
+    }
+  }
+  ofPopMatrix();
+}
+
+void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth, float scale) const {
+  ofPushMatrix();
+  ofScale(scale);
+  {
+    if (constrainedLineWidth > 0) {
+      std::for_each(constrainedDividerLines.begin(),
+                    constrainedDividerLines.end(),
+                    [&](const auto& dl) {
+        dl.draw(constrainedLineWidth / scale);
+      });
+    }
+    if (unconstrainedLineWidth > 0) {
+      std::for_each(unconstrainedDividerLines.begin(),
+                    unconstrainedDividerLines.end(),
+                    [&](const auto& dl) {
+        dl.draw(unconstrainedLineWidth / scale);
+      });
+    }
+    if (areaConstraintLineWidth > 0) {
+      std::for_each(areaConstraints.begin(),
+                    areaConstraints.end(),
+                    [&](const auto& dl) {
+        dl.draw(areaConstraintLineWidth / scale);
       });
     }
   }
