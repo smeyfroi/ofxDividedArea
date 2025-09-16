@@ -5,6 +5,13 @@
 #include "ofColor.h"
 #include "ofVboMesh.h"
 
+// Notes:
+// - pointToLineDistance: For zero-length lines (start≈end), returns distance to start point.
+// - isOccludedBy: Zero-length lines never occlude/are occluded. Occlusion requires
+//   * similar direction (|dot| >= gradientTolerance),
+//   * small perpendicular distance between spans (< distanceTolerance),
+//   * and overlap along the tangent direction (EPS-aware).
+
 class DividerLine;
 using DividerLines = std::vector<DividerLine>;
 

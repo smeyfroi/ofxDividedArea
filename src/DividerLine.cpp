@@ -3,39 +3,65 @@
 #include "ofMath.h"
 #include "ofPath.h"
 #include "LineGeom.h"
+#include "GeomUtils.h"
+
+using namespace geom;
 
 // https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
 float DividerLine::pointToLineDistance(glm::vec2 point, const DividerLine& line) {
-  float dx = line.end.x - line.start.x;
-  float dy = line.end.y - line.start.y;
-  float denom = std::sqrt(dx*dx + dy*dy);
-  if (denom == 0.0f) {
+  glm::vec2 d = line.end - line.start;
+  auto norm = safeNormalize(d);
+  if (norm.length < EPS) {
     return glm::distance(point, line.start);
   }
-  return std::abs(dy*point.x - dx*point.y + (line.end.x*line.start.y) - (line.end.y*line.start.x)) / denom;
+  // Distance to infinite line via cross/|d|
+  return std::fabs(cross2(d, point - line.start)) / norm.length;
 }
 
-// Occluded IF endpoints of one line close to other line AND gradients similar
+// Occluded IF spans are close in perpendicular direction AND directions similar AND spans overlap along tangent
 bool DividerLine::isOccludedBy(const DividerLine& dividerLine, float distanceTolerance, float gradientTolerance) const {
   if (&dividerLine == this) return false;
 
   glm::vec2 d1 = end - start;
   glm::vec2 d2 = dividerLine.end - dividerLine.start;
-  float len1 = glm::length(d1);
-  float len2 = glm::length(d2);
-  if (len1 < 1e-6f || len2 < 1e-6f) {
-    return false; // zero-length cannot occlude
-  }
+  auto n1 = safeNormalize(d1);
+  auto n2 = safeNormalize(d2);
+  if (n1.length < EPS || n2.length < EPS) return false;
 
-  float dot = glm::dot(d1 / len1, d2 / len2);
+  float dot = glm::dot(n1.unit, n2.unit);
   if (std::abs(dot) < gradientTolerance) return false;
 
-  if ((pointToLineDistance(start, dividerLine) < distanceTolerance &&
-       pointToLineDistance(end, dividerLine) < distanceTolerance)) return true;
+  // Normal vector (perp to direction)
+  glm::vec2 n = glm::vec2(-n1.unit.y, n1.unit.x);
 
-  if ((pointToLineDistance(dividerLine.start, *this) < distanceTolerance &&
-       pointToLineDistance(dividerLine.end, *this) < distanceTolerance)) return true;
-  return false;
+  // Compute perpendicular distances of all endpoints to the other's supporting line; require small on both ends (both spans near)
+  float dA0 = std::fabs(cross2(d2, start - dividerLine.start)) / n2.length;
+  float dA1 = std::fabs(cross2(d2, end   - dividerLine.start)) / n2.length;
+  float dB0 = std::fabs(cross2(d1, dividerLine.start - start)) / n1.length;
+  float dB1 = std::fabs(cross2(d1, dividerLine.end   - start)) / n1.length;
+
+  if (!((dA0 < distanceTolerance && dA1 < distanceTolerance) ||
+        (dB0 < distanceTolerance && dB1 < distanceTolerance))) {
+    return false;
+  }
+
+  // Project spans onto the tangent (direction) to ensure overlap along the line, not just proximity
+  auto projRange = [&](const glm::vec2& a, const glm::vec2& b, const glm::vec2& origin, const glm::vec2& dirUnit){
+    float ta = glm::dot(a - origin, dirUnit);
+    float tb = glm::dot(b - origin, dirUnit);
+    return std::pair<float,float>{std::min(ta, tb), std::max(ta, tb)};
+  };
+
+  auto [a0, a1] = projRange(start, end, start, n1.unit); // self range along own tangent
+  // project other span into same frame
+  float b0 = glm::dot(dividerLine.start - start, n1.unit);
+  float b1 = glm::dot(dividerLine.end   - start, n1.unit);
+
+  if (!rangesOverlap(a0, a1, b0, b1, distanceTolerance)) {
+    return false;
+  }
+
+  return true;
 }
 
 bool DividerLine::isOccludedByAny(const DividerLines& dividerLines, float distanceTolerance, float gradientTolerance) const {

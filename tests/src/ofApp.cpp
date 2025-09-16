@@ -49,34 +49,36 @@ void ofApp::runTests(){
     auto p = lineToSegmentIntersection({0,0},{10,0},{0,1},{10,1});
     expect(!p.has_value(), failures, "parallel disjoint should have no intersection");
   }
-  // Collinear overlapping: current impl returns nullopt; assert that to capture behavior to fix
+  // Collinear overlapping: expect nearest endpoint to lStart
   {
     auto p = lineToSegmentIntersection({0,0},{10,0},{2,0},{8,0});
-    expect(!p.has_value(), failures, "collinear overlapping returns nullopt (will fix later)");
+    expect(p.has_value(), failures, "collinear overlapping should return a deterministic endpoint");
+    if (p) expect(glm::all(glm::epsilonEqual(*p, glm::vec2{2,0}, 1e-5f)), failures, "collinear: nearest endpoint to lStart");
   }
-  // Degenerate line (point) vs segment: should be no crash; current impl likely NaNs; assert no intersection to capture failing case
+  // Degenerate line (point) on segment: expect point
   {
     auto p = lineToSegmentIntersection({1,1},{1,1},{0,0},{2,2});
-    expect(!p.has_value(), failures, "degenerate line should be handled (currently nullopt)");
+    expect(p.has_value(), failures, "degenerate line point on segment should intersect");
+    if (p) expect(glm::all(glm::epsilonEqual(*p, glm::vec2{1,1}, 1e-5f)), failures, "degenerate line returned point");
   }
-  // Degenerate segment (point) vs line: current impl likely divides; assert no intersection
+  // Degenerate segment (point) on line: expect point
   {
     auto p = lineToSegmentIntersection({0,0},{10,0},{5,0},{5,0});
-    expect(!p.has_value(), failures, "degenerate segment should be handled (currently nullopt)");
+    expect(p.has_value(), failures, "degenerate segment point on line should intersect");
+    if (p) expect(glm::all(glm::epsilonEqual(*p, glm::vec2{5,0}, 1e-5f)), failures, "degenerate segment returned point");
   }
-  // DividerLine pointToLineDistance zero-length: should not blow up; current impl would div/0; we just call it and check finite
+  // Zero-length distance equals point distance
   {
     DividerLine dl; dl.start = {1,1}; dl.end = {1,1};
-    float d = *(float*)__builtin_alloca(0); // noop to avoid optimizations
-    d = DividerLine::pointToLineDistance({2,2}, dl);
-    expect(std::isfinite(d), failures, "pointToLineDistance should be finite for zero-length line (currently may inf)");
+    float d = DividerLine::pointToLineDistance({2,2}, dl);
+    expect(std::isfinite(d), failures, "pointToLineDistance finite for zero-length");
+    expect(std::fabs(d - glm::distance(glm::vec2{2,2}, glm::vec2{1,1})) < 1e-6f, failures, "distance equals point distance for zero-length");
   }
-  // isOccludedBy with zero-length line should not produce NaN dot; expect false or safe handling
+  // Zero-length occlusion is false
   {
     DividerLine a; a.start={0,0}; a.end={0,0};
     DividerLine b; b.start={0,0}; b.end={10,0};
     bool occ = a.isOccludedBy(b, 0.1f, 0.99f);
-    // Any result without crash is acceptable; prefer false; capture if true
     expect(occ==false, failures, "zero-length line should not be considered occluded");
   }
 }

@@ -1,22 +1,35 @@
 #include "LineGeom.h"
-#include "ofMath.h"
-#include "glm/vec2.hpp"
-#define GLM_ENABLE_EXPERIMENTAL
-#include "glm/gtx/norm.hpp" // to get glm::distance2, which also requires the above define
+#include "GeomUtils.h"
 #include <optional>
 #include <cmath>
 #include <algorithm>
 #include <limits>
 
-namespace {
-  inline float cross2(const glm::vec2& a, const glm::vec2& b) { return a.x*b.y - a.y*b.x; }
-  constexpr float EPS = 1e-6f;
+// Notes:
+// - EPS is the global geometric tolerance used across all computations.
+// - Use nearZero/near for comparisons instead of raw == to avoid floating-point pitfalls.
+// - safeNormalize returns zero-length when vector magnitude < EPS to prevent NaNs.
+// - All distances/overlaps are EPS-tolerant.
+
+// - gradient(start,end): Undefined (infinite) for vertical lines (|dx| ~ 0). Callers should not assume finiteness.
+// - yForLineAtX(x,start,end): Returns NaN for vertical lines to signal non-unique y at given x.
+// - xForLineAtY(y,start,end): For vertical lines, returns start.x (x is constant).
+// - lineToSegmentIntersection:
+//   * Intersects the infinite line (lStart-lEnd) with the finite segment (lsStart-lsEnd).
+//   * Handles degenerate inputs (point-line, point-segment).
+//   * Parallel disjoint → no intersection.
+//   * Collinear overlap → returns the segment endpoint nearest to lStart (deterministic policy).
+//   * All comparisons use a small EPS tolerance; see GeomUtils.h.
+
+using namespace geom;
+
+float gradient(glm::vec2 start, glm::vec2 end) {
+  return (end.y - start.y) / (end.x - start.x);
 }
 
-// y = mx + b
 float yForLineAtX(float x, glm::vec2 start, glm::vec2 end) {
   float dx = end.x - start.x;
-  if (std::fabs(dx) < EPS) {
+  if (nearZero(dx)) {
     return std::numeric_limits<float>::quiet_NaN();
   }
   float m = (end.y - start.y) / dx;
@@ -24,11 +37,10 @@ float yForLineAtX(float x, glm::vec2 start, glm::vec2 end) {
   return m * x + b;
 }
 
-// y = mx + b
 float xForLineAtY(float y, glm::vec2 start, glm::vec2 end) {
   float dx = end.x - start.x;
   float dy = end.y - start.y;
-  if (std::fabs(dx) < EPS) {
+  if (nearZero(dx)) {
     return start.x;
   }
   float m = dy / dx;
@@ -39,7 +51,7 @@ float xForLineAtY(float y, glm::vec2 start, glm::vec2 end) {
 static bool pointOnLine(const glm::vec2& p, const glm::vec2& a, const glm::vec2& b, float eps) {
   glm::vec2 r = b - a;
   glm::vec2 ap = p - a;
-  return std::fabs(cross2(r, ap)) <= eps * (1.0f + glm::length(r) + glm::length(ap));
+  return std::fabs(cross2(r, ap)) <= eps * (1.0f + len(r) + len(ap));
 }
 
 static bool pointOnSegment(const glm::vec2& p, const glm::vec2& a, const glm::vec2& b, float eps) {
@@ -56,21 +68,42 @@ std::optional<glm::vec2> lineToSegmentIntersection(glm::vec2 lStart, glm::vec2 l
   glm::vec2 q = lsStart;
   glm::vec2 s = lsEnd - lsStart;
 
-  if (glm::length2(r) < EPS*EPS) {
+  if (len2(r) < EPS*EPS) {
     if (pointOnSegment(p, q, lsEnd, EPS)) return p;
     return std::nullopt;
   }
-  if (glm::length2(s) < EPS*EPS) {
+  if (len2(s) < EPS*EPS) {
     if (pointOnLine(q, p, lEnd, EPS)) return q;
     return std::nullopt;
+  }
+
+  // Vertical/horizontal fast-paths for the segment bounds (cheap)
+  if (near(lsStart.x, lsEnd.x)) {
+    float x = lsStart.x;
+    float y = yForLineAtX(x, lStart, lEnd);
+    if (std::isfinite(y) &&
+        y >= std::min(lsStart.y, lsEnd.y) - EPS &&
+        y <= std::max(lsStart.y, lsEnd.y) + EPS) {
+      return glm::vec2{x, y};
+    }
+    // fallthrough to parametric for edge numerics or NaN y
+  } else if (near(lsStart.y, lsEnd.y)) {
+    float y = lsStart.y;
+    float x = xForLineAtY(y, lStart, lEnd);
+    if (std::isfinite(x) &&
+        x >= std::min(lsStart.x, lsEnd.x) - EPS &&
+        x <= std::max(lsStart.x, lsEnd.x) + EPS) {
+      return glm::vec2{x, y};
+    }
+    // fallthrough to parametric
   }
 
   float rxs = cross2(r, s);
   glm::vec2 q_p = q - p;
   float qpxr = cross2(q_p, r);
 
-  if (std::fabs(rxs) < EPS) {
-    if (std::fabs(qpxr) < EPS) {
+  if (nearZero(rxs)) {
+    if (nearZero(qpxr)) {
       glm::vec2 cand = (glm::distance2(q, p) <= glm::distance2(lsEnd, p)) ? q : lsEnd;
       return cand;
     } else {
@@ -78,11 +111,12 @@ std::optional<glm::vec2> lineToSegmentIntersection(glm::vec2 lStart, glm::vec2 l
     }
   }
 
-  float t = cross2(q_p, s) / rxs;
-  float u = cross2(q_p, r) / rxs;
+  // Use double for borderline stability
+  double t = static_cast<double>(cross2(q_p, s)) / static_cast<double>(rxs);
+  double u = static_cast<double>(cross2(q_p, r)) / static_cast<double>(rxs);
 
-  if (u >= -EPS && u <= 1.0f + EPS) {
-    glm::vec2 inter = p + t * r;
+  if (u >= -EPS && u <= 1.0 + EPS) {
+    glm::vec2 inter = p + static_cast<float>(t) * r;
     return inter;
   }
   return std::nullopt;
