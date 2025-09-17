@@ -25,6 +25,11 @@ ofParameterGroup& DividedArea::getParameterGroup() {
   return parameters;
 }
 
+DividedArea::DividedArea(glm::vec2 size_, int maxUnconstrainedDividerLines_) :
+size(size_),
+maxUnconstrainedDividerLines(maxUnconstrainedDividerLines_)
+{}
+
 bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
   if (maxUnconstrainedDividerLines < 0 || unconstrainedDividerLines.size() >= maxUnconstrainedDividerLines) return false;
   if (ref1 == ref2) return false;
@@ -203,9 +208,7 @@ void DividedArea::setMaxDividers(int max) {
     vbo.setAttributeBuffer(5, instanceBO, 4, stride, offColor);
     vbo.setAttributeDivisor(5, 1);
     vbo.unbind();
-  }
-
-  if (!shader.isLoaded()) {
+    
     shader.load("shadersGL3/dividers_instanced");
   }
 }
@@ -258,6 +261,7 @@ void DividedArea::drawInstanced(float scale) const {
   }
 
   ofEnableBlendMode(OF_BLENDMODE_ALPHA);
+  ofFill();
   shader.begin();
   vbo.bind();
   vbo.drawInstanced(OF_MESH_FILL, 0, 4, instanceCount);
@@ -267,7 +271,7 @@ void DividedArea::drawInstanced(float scale) const {
   ofPopMatrix();
 }
 
-void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, LineConfig constrainedLineConfig, float scale) const {
+void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, float scale) const {
   ofPushMatrix();
   ofScale(scale);
   {
@@ -287,29 +291,14 @@ void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstra
         dl.draw(unconstrainedLineConfig);
       });
     }
-    if (constrainedLineConfig.maxWidth > 0.0) {
-      constrainedLineConfig.scale(scale);
-      std::for_each(constrainedDividerLines.begin(),
-                    constrainedDividerLines.end(),
-                    [&](const auto& dl) {
-        dl.draw(constrainedLineConfig);
-      });
-    }
   }
   ofPopMatrix();
 }
 
-void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth, float scale) const {
+void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale) const {
   ofPushMatrix();
   ofScale(scale);
   {
-    if (constrainedLineWidth > 0) {
-      std::for_each(constrainedDividerLines.begin(),
-                    constrainedDividerLines.end(),
-                    [&](const auto& dl) {
-        dl.draw(constrainedLineWidth / scale);
-      });
-    }
     if (unconstrainedLineWidth > 0) {
       std::for_each(unconstrainedDividerLines.begin(),
                     unconstrainedDividerLines.end(),

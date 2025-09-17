@@ -17,40 +17,24 @@ void ofApp::update(){
   majorRefPoints.resize(std::min((int)majorRefPoints.size(), 14));
   dividedArea.updateUnconstrainedDividerLines(majorRefPoints);
     
-    // OR add unconstrained line directly
-//    dividedArea.addUnconstrainedDividerLine({ofRandom(300)+100, ofRandom(300)+100},
-//                                            {ofRandom(300)+100, ofRandom(300)+100});
-//  }
-
-  dividedArea.addConstrainedDividerLine({ofRandom(1.0), ofRandom(1.0)},
-                                        {ofRandom(1.0), ofRandom(1.0)});
+  auto dl = dividedArea.addConstrainedDividerLine({ofRandom(1.0), ofRandom(1.0)},
+                                                  {ofRandom(1.0), ofRandom(1.0)});
+  if (dl.has_value()) {
+    const ofFloatColor minorDividerColor { ofColor::white };
+    dividedArea.addDividerInstanced(dl->start, dl->end, 1.0/100.0f, true, ofFloatColor::white);
+  }
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
   ofSetWindowTitle(ofToString(ofGetFrameRate()));
-//  dividedArea.draw(10, 6, 0.5);
-//  dividedArea.draw({10.0, 10.0, ofColor::white},
-//                   {6.0, 6.0, ofColor::white},
-//                   {1.0, 1.0, ofColor::white, 6.0*1.0/1000.0});
+
+  dividedArea.drawInstanced(ofGetWindowWidth());
+
   const float maxLineWidth = 16.0;
   const float minLineWidth = 12.0;
   const ofFloatColor majorDividerColor { ofColor::white };
-  const ofFloatColor minorDividerColor { ofColor::white };
-//  // Instanced draw of both existing divider sets for comparison (optional)
-//  // Here we mirror constrained lines into instanced buffer just for demo
-  dividedArea.clearInstanced();
-  for (const auto& dl : dividedArea.constrainedDividerLines) {
-    dividedArea.addDividerInstanced(dl.start, dl.end, 12.0f, true, ofFloatColor::white);
-  }
-  // Only constrained lines are instanced. Unconstrained remain on original path.
-  dividedArea.drawInstanced(ofGetWindowWidth());
-
-  dividedArea.draw({},
-                   { minLineWidth, maxLineWidth, majorDividerColor },
-                   {},
-//                   { minLineWidth*0.1f, minLineWidth*0.15f, minorDividerColor, 0.7 },
-                   ofGetWindowWidth());
+  dividedArea.draw({}, { minLineWidth, maxLineWidth, majorDividerColor }, ofGetWindowWidth());
 
   gui.draw();
 }

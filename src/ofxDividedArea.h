@@ -21,7 +21,9 @@ struct DividerInstance {
 
 class DividedArea {
 public:
-  glm::vec2 size { 1.0, 1.0 };
+  DividedArea(glm::vec2 size = {1.0, 1.0}, int maxUnconstrainedDividerLines = 100);
+
+  glm::vec2 size;
   int maxUnconstrainedDividerLines;
   DividerLines areaConstraints {
     {{0.0, 0.0}, {size.x, 0.0}, {0.0, 0.0}, {size.x, 0.0}},
@@ -41,8 +43,8 @@ public:
   DividerLine createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const;
   std::optional<DividerLine> addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
   
-  void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float constrainedLineWidth, float scale = 1.0) const;
-  void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, LineConfig constrainedLineConfig, float scale = 1.0) const;
+  void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, /*float constrainedLineWidth,*/ float scale = 1.0) const;
+  void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, /*LineConfig constrainedLineConfig,*/ float scale = 1.0) const;
   
   std::string getParameterGroupName() const { return "Divided Area"; }
   ofParameterGroup parameters;
