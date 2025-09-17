@@ -181,11 +181,19 @@ void DividedArea::setMaxDividers(int max) {
 
   // build unit quad and vbo only once
   if (quad.getNumVertices() == 0) {
-    quad.setMode(OF_PRIMITIVE_TRIANGLE_STRIP);
-    quad.addVertex({-0.5f, -0.5f, 0});
-    quad.addVertex({ 0.5f, -0.5f, 0});
-    quad.addVertex({-0.5f,  0.5f, 0});
-    quad.addVertex({ 0.5f,  0.5f, 0});
+    quad.setMode(OF_PRIMITIVE_TRIANGLES);
+    quad.addVertex({-0.5f, -0.5f, 0.0f}); // 0 bottom-left
+    quad.addVertex({ 0.5f, -0.5f, 0.0f}); // 1 bottom-right
+    quad.addVertex({ 0.5f,  0.5f, 0.0f}); // 2 top-right
+    quad.addVertex({-0.5f,  0.5f, 0.0f}); // 3 top-left
+    // Optional per-vertex attributes
+//    quad.addTexCoord({0.0f, 0.0f});
+//    quad.addTexCoord({1.0f, 0.0f});
+//    quad.addTexCoord({1.0f, 1.0f});
+//    quad.addTexCoord({0.0f, 1.0f});
+    // Indices: two CCW triangles
+    quad.addIndex(0); quad.addIndex(1); quad.addIndex(2);
+    quad.addIndex(2); quad.addIndex(3); quad.addIndex(0);
     vbo.setMesh(quad, GL_STATIC_DRAW);
 
     // bind per-instance attributes
@@ -261,10 +269,10 @@ void DividedArea::drawInstanced(float scale) const {
   }
 
   ofEnableBlendMode(OF_BLENDMODE_ALPHA);
-  ofFill();
+  ofFill(); glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); ofDisableDepthTest();
   shader.begin();
   vbo.bind();
-  vbo.drawInstanced(OF_MESH_FILL, 0, 4, instanceCount);
+  vbo.drawElementsInstanced(GL_TRIANGLES, quad.getNumIndices(), instanceCount);
   vbo.unbind();
   shader.end();
 
