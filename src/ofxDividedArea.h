@@ -43,8 +43,8 @@ public:
   DividerLine createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const;
   std::optional<DividerLine> addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
   
-  void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, /*float constrainedLineWidth,*/ float scale = 1.0) const;
-  void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, /*LineConfig constrainedLineConfig,*/ float scale = 1.0) const;
+  void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale = 1.0) const;
+  void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, float scale = 1.0) const;
   
   std::string getParameterGroupName() const { return "Divided Area"; }
   ofParameterGroup parameters;
@@ -58,7 +58,7 @@ public:
 
   // Instanced rendering data
   void drawInstanced(float scale = 1.0f) const;
-  void setMaxDividers(int max);
+  void setMaxConstrainedDividers(int max);
   void clearInstanced();
   void addDividerInstanced(const glm::vec2& a, const glm::vec2& b, float width, bool taper, const ofFloatColor& col);
 

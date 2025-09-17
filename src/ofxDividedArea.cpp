@@ -167,7 +167,7 @@ std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1
   return dividerLine;
 }
 
-void DividedArea::setMaxDividers(int max) {
+void DividedArea::setMaxConstrainedDividers(int max) {
   instanceCapacity = std::max(0, max);
   instances.resize(instanceCapacity);
   head = 0;
@@ -186,12 +186,12 @@ void DividedArea::setMaxDividers(int max) {
     quad.addVertex({ 0.5f, -0.5f, 0.0f}); // 1 bottom-right
     quad.addVertex({ 0.5f,  0.5f, 0.0f}); // 2 top-right
     quad.addVertex({-0.5f,  0.5f, 0.0f}); // 3 top-left
-    // Optional per-vertex attributes
+    // Optional per-vertex attributes if you want (uvs/colors) — not required for instancing
 //    quad.addTexCoord({0.0f, 0.0f});
 //    quad.addTexCoord({1.0f, 0.0f});
 //    quad.addTexCoord({1.0f, 1.0f});
 //    quad.addTexCoord({0.0f, 1.0f});
-    // Indices: two CCW triangles
+    // Indices: two CCW triangles (0,1,2) and (0,2,3)
     quad.addIndex(0); quad.addIndex(1); quad.addIndex(2);
     quad.addIndex(2); quad.addIndex(3); quad.addIndex(0);
     vbo.setMesh(quad, GL_STATIC_DRAW);

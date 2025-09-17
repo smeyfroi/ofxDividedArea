@@ -5,7 +5,7 @@ void ofApp::setup(){
   ofSetBackgroundAuto(true);
   ofSetBackgroundColor(ofColor::black);
   
-  dividedArea.setMaxDividers(4000);
+  dividedArea.setMaxConstrainedDividers(4000);
   
   gui.setup(dividedArea.getParameterGroup());
 }
@@ -21,7 +21,7 @@ void ofApp::update(){
                                                   {ofRandom(1.0), ofRandom(1.0)});
   if (dl.has_value()) {
     const ofFloatColor minorDividerColor { ofColor::white };
-    dividedArea.addDividerInstanced(dl->start, dl->end, 1.0/100.0f, true, ofFloatColor::white);
+    dividedArea.addDividerInstanced(dl->start, dl->end, 1.0/200.0f, true, ofFloatColor::white);
   }
 }
 
