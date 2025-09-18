@@ -217,7 +217,7 @@ void DividedArea::setMaxConstrainedDividers(int max) {
     vbo.setAttributeDivisor(5, 1);
     vbo.unbind();
     
-    shader.load("shadersGL3/dividers_instanced");
+    shader.load();
   }
 }
 
@@ -256,9 +256,8 @@ static void syncInstanceBufferIfNeeded(const std::vector<DividerInstance>& insta
   }
 }
 
-void DividedArea::drawInstanced(float scale) const {
+void DividedArea::drawInstanced(float scale) {
   if (instanceCount == 0) return;
-  if (!shader.isLoaded()) return;
 
   ofPushMatrix();
   ofScale(scale);

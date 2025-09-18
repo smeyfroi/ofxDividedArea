@@ -10,6 +10,7 @@
 #include "ofShader.h"
 #include "ofMesh.h"
 #include "LineGeom.h"
+#include "DividerLineShader.h"
 
 struct DividerInstance {
   glm::vec2 p0;
@@ -57,7 +58,7 @@ public:
   ofParameterGroup& getParameterGroup();
 
   // Instanced rendering data
-  void drawInstanced(float scale = 1.0f) const;
+  void drawInstanced(float scale = 1.0f);
   void setMaxConstrainedDividers(int max);
   void clearInstanced();
   void addDividerInstanced(const glm::vec2& a, const glm::vec2& b, float width, bool taper, const ofFloatColor& col);
@@ -68,7 +69,7 @@ private:
   mutable ofBufferObject instanceBO;
   mutable ofVbo vbo;
   ofMesh quad;
-  ofShader shader;
+  DividerLineShader shader;
   int instanceCapacity = 0;
   mutable int instanceCount = 0;
   int head = 0;

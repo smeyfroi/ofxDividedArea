@@ -72,23 +72,39 @@ bool DividerLine::isOccludedByAny(const DividerLines& dividerLines, float distan
   });
 }
 
+// Quantised hash to ensure random but stable results
+static inline uint32_t mix32(uint32_t x) {
+  x ^= x >> 16; x *= 0x7feb352d;
+  x ^= x >> 15; x *= 0x846ca68b;
+  x ^= x >> 16; return x;
+}
+
+static inline uint32_t hashVec2(const glm::vec2& v) {
+  // Quantize to reduce floating noise; adjust scale as needed
+  int xi = static_cast<int>(std::floor(v.x * 1e6f));
+  int yi = static_cast<int>(std::floor(v.y * 1e6f));
+  uint32_t h = 0x9e3779b9u;
+  h ^= mix32(static_cast<uint32_t>(xi)) + 0x9e3779b9u + (h<<6) + (h>>2);
+  h ^= mix32(static_cast<uint32_t>(yi)) + 0x9e3779b9u + (h<<6) + (h>>2);
+  return h;
+}
+
 // Shrink the startLine towards a reference point to fit inside the constraints
 Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine) {
-  glm::vec2 shrinkTowards = ref1;
-  if (ref1.x > ref2.x) { // deterministic random choice to balance resulting lines
-    shrinkTowards = ref2;
-  }
+  glm::vec2 start = startLine.start, end = startLine.end;
 
-  glm::vec2 start = startLine.start;
-  glm::vec2 end = startLine.end;
-  
+  // Order-independent pair hash for randomised but stable choice of shrinkTowards point
+  uint32_t h1 = hashVec2(ref1), h2 = hashVec2(ref2);
+  uint32_t pairHash = (h1 < h2) ? (h1 * 0x85ebca6bu ^ h2) : (h2 * 0x85ebca6bu ^ h1);
+
+  const glm::vec2& shrinkTowards = (pairHash & 1u) ? ref1 : ref2;
+
   for (const auto& constraint : constraints) {
     if ((ref1 == constraint.ref1 && ref2 == constraint.ref2) || (ref2 == constraint.ref1 && ref1 == constraint.ref2)) {
       continue; // don't constrain by self
     }
-    if (auto intersectionResult = lineToSegmentIntersection(ref1, ref2, constraint.start, constraint.end)) {
-      glm::vec2 intersection = intersectionResult.value();
-      shrinkLineToIntersectionAroundReferencePoint(start, end, intersection, shrinkTowards);
+    if (auto intersection = lineToSegmentIntersection(ref1, ref2, constraint.start, constraint.end)) {
+      shrinkLineToIntersectionAroundReferencePoint(start, end, *intersection, shrinkTowards);
     }
   }
   
