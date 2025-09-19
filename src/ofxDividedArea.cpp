@@ -21,6 +21,11 @@ ofParameterGroup& DividedArea::getParameterGroup() {
     parameters.add(constrainedOcclusionDistanceParameter);
     parameters.add(occlusionAngleParameter);
     parameters.add(maxConstrainedLinesParameter);
+    parameters.add(maxTaperLengthParameter);
+    parameters.add(minWidthFactorStartParameter);
+    parameters.add(maxWidthFactorStartParameter);
+    parameters.add(minWidthFactorEndParameter);
+    parameters.add(maxWidthFactorEndParameter);
   }
   return parameters;
 }
@@ -261,7 +266,11 @@ void DividedArea::drawInstanced(float scale) {
   ofScale(scale);
   ofEnableBlendMode(OF_BLENDMODE_ALPHA);
   ofFill(); glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); ofDisableDepthTest();
-  shader.begin();
+  shader.begin(maxTaperLengthParameter,
+                minWidthFactorStartParameter,
+                maxWidthFactorStartParameter,
+                minWidthFactorEndParameter,
+                maxWidthFactorEndParameter);
   vbo.bind();
   vbo.drawElementsInstanced(GL_TRIANGLES, quad.getNumIndices(), instanceCount);
   vbo.unbind();

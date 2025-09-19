@@ -49,12 +49,18 @@ public:
   
   std::string getParameterGroupName() const { return "Divided Area"; }
   ofParameterGroup parameters;
-  ofParameter<float> lerpAmountParameter { "lerpAmount", 0.5, 0.0, 1.0 };
-  ofParameter<float> closePointDistanceParameter { "closePoint", 0.03, 0.0, 1.0 };
+  ofParameter<float> lerpAmountParameter { "unconstrainedLerpAmount", 0.5, 0.0, 1.0 };
+  ofParameter<float> closePointDistanceParameter { "unconstrainedClosePoint", 0.03, 0.0, 1.0 };
   ofParameter<float> unconstrainedOcclusionDistanceParameter { "unconstrainedOcclusionDistance", 0.05, 0.0, 0.1 };
   ofParameter<float> constrainedOcclusionDistanceParameter { "constrainedOcclusionDistance", 0.0015, 0.0, 0.01 };
   ofParameter<float> occlusionAngleParameter { "occlusionAngle", 0.97, 0.0, 1.0 }; // 0.0 if perpendicular, 1.0 if coincident
   ofParameter<int> maxConstrainedLinesParameter { "maxConstrainedLines", 1000, 100, 10000 };
+  ofParameter<float> maxTaperLengthParameter { "maxTaperLength", 1000.0, 100.0, 6000.0 }; // vary widths over this px length
+  ofParameter<float> minWidthFactorStartParameter { "minWidthFactorStart", 0.6, 0.0, 1.0 }; // when tapering, minimum width factor at start of taper
+  ofParameter<float> maxWidthFactorStartParameter { "maxWidthFactorStart", 1.0, 0.0, 1.0 }; // when tapering, maximum width factor at start of taper
+  ofParameter<float> minWidthFactorEndParameter { "minWidthFactorEnd", 0.4, 0.0, 1.0 }; // when tapering, minimum width factor at end
+  ofParameter<float> maxWidthFactorEndParameter { "maxWidthFactorEnd", 0.9, 0.0, 1.0 }; // when tapering, maximum width factor at end
+  
   ofParameterGroup& getParameterGroup();
 
   // Instanced rendering data

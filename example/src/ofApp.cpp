@@ -5,7 +5,9 @@ void ofApp::setup(){
   ofSetBackgroundAuto(true);
   ofSetBackgroundColor(ofColor::black);
   
-  gui.setup(dividedArea.getParameterGroup());
+  parameters.add(constrainedWidthParameter);
+  parameters.add(dividedArea.getParameterGroup());
+  gui.setup(parameters);
 }
 
 //--------------------------------------------------------------
@@ -19,7 +21,7 @@ void ofApp::update(){
                                                   {ofRandom(1.0), ofRandom(1.0)});
   if (dl.has_value()) {
     const ofFloatColor minorDividerColor { ofColor::white };
-    dividedArea.addDividerInstanced(dl->start, dl->end, 1.0/500.0f, true, ofFloatColor::white);
+    dividedArea.addDividerInstanced(dl->start, dl->end, constrainedWidthParameter, true, ofFloatColor::white);
 //  } else {
 //    ofLogNotice() << "no constrained line added " << ofGetFrameNum();
   }

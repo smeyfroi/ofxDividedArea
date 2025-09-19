@@ -10,6 +10,17 @@
 #include "Shader.h"
 
 class DividerLineShader : public Shader {
+  
+public:
+  void begin(float maxTaperLength, float minWidthFactorStart, float maxWidthFactorStart, float minWidthFactorEnd, float maxWidthFactorEnd) {
+    Shader::begin();
+    shader.setUniform1f("maxTaperLength", maxTaperLength);
+    shader.setUniform1f("minWidthFactorStart", minWidthFactorStart);
+    shader.setUniform1f("maxWidthFactorStart", maxWidthFactorStart);
+    shader.setUniform1f("minWidthFactorEnd", minWidthFactorEnd);
+    shader.setUniform1f("maxWidthFactorEnd", maxWidthFactorEnd);
+  }
+  
 protected:
   std::string getVertexShader() override {
     return GLSL(
@@ -21,6 +32,11 @@ protected:
                 layout(location = 5) in vec4 instColor;
 
                 uniform mat4 modelViewProjectionMatrix;
+                uniform float maxTaperLength; // vary widths over this px length, e.g. 1000
+                uniform float minWidthFactorStart; // when tapering, minimum width factor at start of taper, e.g. 0.6
+                uniform float maxWidthFactorStart; // when tapering, maximum width factor at start of taper, e.g. 1.0
+                uniform float minWidthFactorEnd; // when tapering, minimum width factor at end, e.g. 0.4
+                uniform float maxWidthFactorEnd; // when tapering, maximum width factor at end, e.g. 0.9
 
                 out vec2 vUv;
                 out vec4 vColor;
@@ -36,9 +52,9 @@ protected:
                   
                   float halfW;
                   if (instStyle > 0.5) {
-                    float widthFactor = clamp(len, 0.0, 1000.0) / 1000.0;
-                    float startW = instWidth * mix(0.6, 1.0, widthFactor);
-                    float endW   = instWidth * mix(0.3, 0.9, widthFactor);
+                    float widthFactor = clamp(len, 0.0, maxTaperLength) / maxTaperLength;
+                    float startW = instWidth * mix(minWidthFactorStart, maxWidthFactorStart, widthFactor);
+                    float endW   = instWidth * mix(minWidthFactorEnd, maxWidthFactorEnd, widthFactor);
                     halfW = mix(startW, endW, vUv.y) * 0.5;
                   } else {
                     halfW = instWidth * 0.5;
