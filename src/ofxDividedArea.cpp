@@ -28,7 +28,10 @@ ofParameterGroup& DividedArea::getParameterGroup() {
 DividedArea::DividedArea(glm::vec2 size_, int maxUnconstrainedDividerLines_) :
 size(size_),
 maxUnconstrainedDividerLines(maxUnconstrainedDividerLines_)
-{}
+{
+  setupInstancedDraw(maxConstrainedLinesParameter);
+  shader.load();
+}
 
 bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
   if (maxUnconstrainedDividerLines < 0 || unconstrainedDividerLines.size() >= maxUnconstrainedDividerLines) return false;
@@ -167,19 +170,8 @@ std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1
   return dividerLine;
 }
 
-void DividedArea::setMaxConstrainedDividers(int max) {
-  instanceCapacity = std::max(0, max);
-  instances.resize(instanceCapacity);
-  head = 0;
-  instanceCount = 0;
-  if (instanceCapacity > 0 && !instanceBO.isAllocated()) {
-    instanceBO.allocate(instances, GL_DYNAMIC_DRAW);
-  } else if (instanceCapacity > 0) {
-    instanceBO.updateData(0, instanceCapacity * (int)sizeof(DividerInstance), instances.data());
-  }
-  instancesDirty = true;
-
-  // build unit quad and vbo only once
+void DividedArea::setupInstancedDraw(int newInstanceCapacity) {
+  // build unit quad only once
   if (quad.getNumVertices() == 0) {
     quad.setMode(OF_PRIMITIVE_TRIANGLES);
     quad.addVertex({-0.5f, -0.5f, 0.0f}); // 0 bottom-left
@@ -187,48 +179,50 @@ void DividedArea::setMaxConstrainedDividers(int max) {
     quad.addVertex({ 0.5f,  0.5f, 0.0f}); // 2 top-right
     quad.addVertex({-0.5f,  0.5f, 0.0f}); // 3 top-left
     // Optional per-vertex attributes if you want (uvs/colors) — not required for instancing
-//    quad.addTexCoord({0.0f, 0.0f});
-//    quad.addTexCoord({1.0f, 0.0f});
-//    quad.addTexCoord({1.0f, 1.0f});
-//    quad.addTexCoord({0.0f, 1.0f});
+    //    quad.addTexCoord({0.0f, 0.0f});
+    //    quad.addTexCoord({1.0f, 0.0f});
+    //    quad.addTexCoord({1.0f, 1.0f});
+    //    quad.addTexCoord({0.0f, 1.0f});
     // Indices: two CCW triangles (0,1,2) and (0,2,3)
     quad.addIndex(0); quad.addIndex(1); quad.addIndex(2);
     quad.addIndex(2); quad.addIndex(3); quad.addIndex(0);
     vbo.setMesh(quad, GL_STATIC_DRAW);
-
-    // bind per-instance attributes
-    vbo.bind();
-    GLsizei stride = sizeof(DividerInstance);
-    std::size_t offP0    = offsetof(DividerInstance, p0);
-    std::size_t offP1    = offsetof(DividerInstance, p1);
-    std::size_t offWidth = offsetof(DividerInstance, width);
-    std::size_t offStyle = offsetof(DividerInstance, style);
-    std::size_t offColor = offsetof(DividerInstance, color);
-
-    vbo.setAttributeBuffer(1, instanceBO, 2, stride, offP0);
-    vbo.setAttributeDivisor(1, 1);
-    vbo.setAttributeBuffer(2, instanceBO, 2, stride, offP1);
-    vbo.setAttributeDivisor(2, 1);
-    vbo.setAttributeBuffer(3, instanceBO, 1, stride, offWidth);
-    vbo.setAttributeDivisor(3, 1);
-    vbo.setAttributeBuffer(4, instanceBO, 1, stride, offStyle);
-    vbo.setAttributeDivisor(4, 1);
-    vbo.setAttributeBuffer(5, instanceBO, 4, stride, offColor);
-    vbo.setAttributeDivisor(5, 1);
-    vbo.unbind();
-    
-    shader.load();
   }
-}
 
-void DividedArea::clearInstanced() {
-  head = 0;
-  instanceCount = 0;
+  instanceCapacity = newInstanceCapacity;
+  instances.resize(instanceCapacity);
+  head = std::min(head, instanceCapacity - 1);
+  instanceCount = std::min(instanceCount, instanceCapacity);
   instancesDirty = true;
+
+  instanceBO.allocate(instances, GL_DYNAMIC_DRAW);
+
+  // bind per-instance attributes
+  vbo.bind();
+  GLsizei stride = sizeof(DividerInstance);
+  std::size_t offP0    = offsetof(DividerInstance, p0);
+  std::size_t offP1    = offsetof(DividerInstance, p1);
+  std::size_t offWidth = offsetof(DividerInstance, width);
+  std::size_t offStyle = offsetof(DividerInstance, style);
+  std::size_t offColor = offsetof(DividerInstance, color);
+  vbo.setAttributeBuffer(1, instanceBO, 2, stride, offP0);
+  vbo.setAttributeDivisor(1, 1);
+  vbo.setAttributeBuffer(2, instanceBO, 2, stride, offP1);
+  vbo.setAttributeDivisor(2, 1);
+  vbo.setAttributeBuffer(3, instanceBO, 1, stride, offWidth);
+  vbo.setAttributeDivisor(3, 1);
+  vbo.setAttributeBuffer(4, instanceBO, 1, stride, offStyle);
+  vbo.setAttributeDivisor(4, 1);
+  vbo.setAttributeBuffer(5, instanceBO, 4, stride, offColor);
+  vbo.setAttributeDivisor(5, 1);
+  vbo.unbind();
 }
 
 void DividedArea::addDividerInstanced(const glm::vec2& a, const glm::vec2& b, float width, bool taper, const ofFloatColor& col) {
-  if (instanceCapacity == 0) return;
+  if (instanceCapacity != maxConstrainedLinesParameter) {
+    setupInstancedDraw(maxConstrainedLinesParameter);
+  }
+
   if (instanceCount == instanceCapacity) {
     head = (head + 1) % instanceCapacity;
     instanceCount--;
@@ -244,9 +238,8 @@ void DividedArea::addDividerInstanced(const glm::vec2& a, const glm::vec2& b, fl
 }
 
 static void syncInstanceBufferIfNeeded(const std::vector<DividerInstance>& instances, int head, int count, int capacity, ofBufferObject& bo) {
-  if (count <= 0) return;
-  int tail = (head + count) % capacity;
   if (!bo.isAllocated()) return;
+  int tail = (head + count) % capacity;
   if (head < tail) {
     bo.updateData(0, count * (int)sizeof(DividerInstance), &instances[head]);
   } else {
@@ -259,14 +252,13 @@ static void syncInstanceBufferIfNeeded(const std::vector<DividerInstance>& insta
 void DividedArea::drawInstanced(float scale) {
   if (instanceCount == 0) return;
 
-  ofPushMatrix();
-  ofScale(scale);
-
   if (instancesDirty) {
     syncInstanceBufferIfNeeded(instances, head, instanceCount, instanceCapacity, instanceBO);
     instancesDirty = false;
   }
-
+   
+  ofPushMatrix();
+  ofScale(scale);
   ofEnableBlendMode(OF_BLENDMODE_ALPHA);
   ofFill(); glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); ofDisableDepthTest();
   shader.begin();
@@ -274,7 +266,6 @@ void DividedArea::drawInstanced(float scale) {
   vbo.drawElementsInstanced(GL_TRIANGLES, quad.getNumIndices(), instanceCount);
   vbo.unbind();
   shader.end();
-
   ofPopMatrix();
 }
 

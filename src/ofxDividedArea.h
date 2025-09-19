@@ -22,7 +22,7 @@ struct DividerInstance {
 
 class DividedArea {
 public:
-  DividedArea(glm::vec2 size = {1.0, 1.0}, int maxUnconstrainedDividerLines = 100);
+  DividedArea(glm::vec2 size = {1.0, 1.0}, int maxUnconstrainedDividerLines = 7);
 
   glm::vec2 size;
   int maxUnconstrainedDividerLines;
@@ -54,22 +54,20 @@ public:
   ofParameter<float> unconstrainedOcclusionDistanceParameter { "unconstrainedOcclusionDistance", 0.05, 0.0, 0.1 };
   ofParameter<float> constrainedOcclusionDistanceParameter { "constrainedOcclusionDistance", 0.0015, 0.0, 0.01 };
   ofParameter<float> occlusionAngleParameter { "occlusionAngle", 0.97, 0.0, 1.0 }; // 0.0 if perpendicular, 1.0 if coincident
-  ofParameter<int> maxConstrainedLinesParameter { "maxConstrainedLines", 1000, 0, 10000 };
+  ofParameter<int> maxConstrainedLinesParameter { "maxConstrainedLines", 1000, 100, 10000 };
   ofParameterGroup& getParameterGroup();
 
   // Instanced rendering data
   void drawInstanced(float scale = 1.0f);
-  void setMaxConstrainedDividers(int max);
-  void clearInstanced();
   void addDividerInstanced(const glm::vec2& a, const glm::vec2& b, float width, bool taper, const ofFloatColor& col);
 
 private:
-  // instance ring buffer
-  std::vector<DividerInstance> instances;
-  mutable ofBufferObject instanceBO;
-  mutable ofVbo vbo;
-  ofMesh quad;
-  DividerLineShader shader;
+  void setupInstancedDraw(int instanceNumber);
+  std::vector<DividerInstance> instances; // ring buffer
+  mutable ofBufferObject instanceBO; // GPU buffer for instances
+  mutable ofVbo vbo; // instance vertices
+  ofMesh quad; // for each instance
+  DividerLineShader shader; // instanced render
   int instanceCapacity = 0;
   mutable int instanceCount = 0;
   int head = 0;

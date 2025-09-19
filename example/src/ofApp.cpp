@@ -5,8 +5,6 @@ void ofApp::setup(){
   ofSetBackgroundAuto(true);
   ofSetBackgroundColor(ofColor::black);
   
-  dividedArea.setMaxConstrainedDividers(4000);
-  
   gui.setup(dividedArea.getParameterGroup());
 }
 
@@ -27,7 +25,7 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-  ofSetWindowTitle(ofToString(ofGetFrameRate()));
+  ofSetWindowTitle(ofToString(ofGetFrameRate()) + " : " + ofToString(dividedArea.constrainedDividerLines.size()));
 
   dividedArea.drawInstanced(ofGetWindowWidth());
 
