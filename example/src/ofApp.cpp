@@ -19,7 +19,9 @@ void ofApp::update(){
                                                   {ofRandom(1.0), ofRandom(1.0)});
   if (dl.has_value()) {
     const ofFloatColor minorDividerColor { ofColor::white };
-    dividedArea.addDividerInstanced(dl->start, dl->end, 1.0/200.0f, true, ofFloatColor::white);
+    dividedArea.addDividerInstanced(dl->start, dl->end, 1.0/500.0f, true, ofFloatColor::white);
+//  } else {
+//    ofLogNotice() << "no constrained line added " << ofGetFrameNum();
   }
 }
 
