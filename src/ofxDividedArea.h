@@ -60,7 +60,8 @@ public:
   ofParameter<float> maxWidthFactorStartParameter { "maxWidthFactorStart", 1.0, 0.0, 1.0 }; // when tapering, maximum width factor at start of taper
   ofParameter<float> minWidthFactorEndParameter { "minWidthFactorEnd", 0.4, 0.0, 1.0 }; // when tapering, minimum width factor at end
   ofParameter<float> maxWidthFactorEndParameter { "maxWidthFactorEnd", 0.9, 0.0, 1.0 }; // when tapering, maximum width factor at end
-  
+  ofParameter<float> constrainedWidthParameter { "constrainedWidth", 1.0/500.0f, 0.0, 0.01 };
+
   ofParameterGroup& getParameterGroup();
 
   // Instanced rendering data

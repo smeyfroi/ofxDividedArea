@@ -5,9 +5,7 @@ void ofApp::setup(){
   ofSetBackgroundAuto(true);
   ofSetBackgroundColor(ofColor::black);
   
-  parameters.add(constrainedWidthParameter);
-  parameters.add(dividedArea.getParameterGroup());
-  gui.setup(parameters);
+  gui.setup(dividedArea.getParameterGroup());
 }
 
 //--------------------------------------------------------------
@@ -17,14 +15,8 @@ void ofApp::update(){
   majorRefPoints.resize(std::min((int)majorRefPoints.size(), 14));
   dividedArea.updateUnconstrainedDividerLines(majorRefPoints);
     
-  auto dl = dividedArea.addConstrainedDividerLine({ofRandom(1.0), ofRandom(1.0)},
+  dividedArea.addConstrainedDividerLine({ofRandom(1.0), ofRandom(1.0)},
                                                   {ofRandom(1.0), ofRandom(1.0)});
-  if (dl.has_value()) {
-    const ofFloatColor minorDividerColor { ofColor::white };
-    dividedArea.addDividerInstanced(dl->start, dl->end, constrainedWidthParameter, true, ofFloatColor::white);
-//  } else {
-//    ofLogNotice() << "no constrained line added " << ofGetFrameNum();
-  }
 }
 
 //--------------------------------------------------------------

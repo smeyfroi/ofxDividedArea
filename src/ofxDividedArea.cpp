@@ -26,6 +26,7 @@ ofParameterGroup& DividedArea::getParameterGroup() {
     parameters.add(maxWidthFactorStartParameter);
     parameters.add(minWidthFactorEndParameter);
     parameters.add(maxWidthFactorEndParameter);
+    parameters.add(constrainedWidthParameter);
   }
   return parameters;
 }
@@ -172,6 +173,11 @@ std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1
   if (dividerLine.isOccludedByAny(constrainedDividerLines, occlusionDistance, occlusionAngleParameter)) return std::nullopt;
   if (constrainedDividerLines.size() > maxConstrainedLinesParameter) deleteEarlyConstrainedDividerLines(maxConstrainedLinesParameter * 0.05);
   constrainedDividerLines.push_back(dividerLine);
+  addDividerInstanced(dividerLine.start,
+                      dividerLine.end,
+                      constrainedWidthParameter,
+                      true,
+                      ofFloatColor::white);
   return dividerLine;
 }
 

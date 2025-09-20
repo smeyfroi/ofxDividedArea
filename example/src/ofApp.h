@@ -25,7 +25,5 @@ public:
   DividedArea dividedArea;
   std::vector<glm::vec2> majorRefPoints;
   
-  ofParameterGroup parameters;
-  ofParameter<float> constrainedWidthParameter { "constrainedWidth", 1.0/500.0f, 0.0, 0.01 };
   ofxPanel gui;
 };
