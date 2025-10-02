@@ -166,7 +166,7 @@ DividerLine DividedArea::createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 
   return DividerLine::create(ref1, ref2, constrainedDividerLines, lineWithinUnconstrainedDividerLines);
 }
 
-std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
+std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2, ofFloatColor color) {
   if (ref1 == ref2) return std::nullopt;
   DividerLine dividerLine = createConstrainedDividerLine(ref1, ref2);
   float occlusionDistance = constrainedOcclusionDistanceParameter * size.x;
@@ -177,7 +177,7 @@ std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1
                       dividerLine.end,
                       constrainedWidthParameter,
                       true,
-                      ofFloatColor::white);
+                      color);
   return dividerLine;
 }
 
