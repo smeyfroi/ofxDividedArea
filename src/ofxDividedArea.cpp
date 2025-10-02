@@ -166,17 +166,16 @@ DividerLine DividedArea::createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 
   return DividerLine::create(ref1, ref2, constrainedDividerLines, lineWithinUnconstrainedDividerLines);
 }
 
-std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2, ofFloatColor color) {
+std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2, ofFloatColor color, float overriddenWidth) {
   if (ref1 == ref2) return std::nullopt;
   DividerLine dividerLine = createConstrainedDividerLine(ref1, ref2);
   float occlusionDistance = constrainedOcclusionDistanceParameter * size.x;
   if (dividerLine.isOccludedByAny(constrainedDividerLines, occlusionDistance, occlusionAngleParameter)) return std::nullopt;
   if (constrainedDividerLines.size() > maxConstrainedLinesParameter) deleteEarlyConstrainedDividerLines(maxConstrainedLinesParameter * 0.05);
   constrainedDividerLines.push_back(dividerLine);
-  addDividerInstanced(dividerLine.start,
-                      dividerLine.end,
-                      constrainedWidthParameter,
-                      true,
+  float width = (overriddenWidth > 0.0) ? overriddenWidth : constrainedWidthParameter.get();
+  addDividerInstanced(dividerLine.start, dividerLine.end,
+                      width, true,
                       color);
   return dividerLine;
 }

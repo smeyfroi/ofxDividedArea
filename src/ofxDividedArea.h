@@ -42,7 +42,7 @@ public:
   void clearConstrainedDividerLines();
   void deleteEarlyConstrainedDividerLines(size_t count);
   DividerLine createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const;
-  std::optional<DividerLine> addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2, ofFloatColor color);
+  std::optional<DividerLine> addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2, ofFloatColor color, float overriddenWidth = -1.0);
   
   void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale = 1.0) const;
   void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, float scale = 1.0) const;
