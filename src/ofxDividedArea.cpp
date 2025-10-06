@@ -27,6 +27,7 @@ ofParameterGroup& DividedArea::getParameterGroup() {
     parameters.add(minWidthFactorEndParameter);
     parameters.add(maxWidthFactorEndParameter);
     parameters.add(constrainedWidthParameter);
+    parameters.add(refractiveRectangleShader.getParameterGroup());
   }
   return parameters;
 }
