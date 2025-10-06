@@ -11,6 +11,7 @@
 #include "ofMesh.h"
 #include "LineGeom.h"
 #include "DividerLineShader.h"
+#include "RefractiveRectangleShader.h"
 
 struct DividerInstance {
   glm::vec2 p0;
@@ -44,7 +45,7 @@ public:
   DividerLine createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const;
   std::optional<DividerLine> addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2, ofFloatColor color, float overriddenWidth = -1.0);
   
-  void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale = 1.0) const;
+  void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale, const ofFbo& backgroundFbo);
   void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, float scale = 1.0) const;
   
   std::string getParameterGroupName() const { return "Divided Area"; }
@@ -80,4 +81,5 @@ private:
   int head = 0;
   mutable bool instancesDirty = false;
 
+  RefractiveRectangleShader refractiveRectangleShader;
 };

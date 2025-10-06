@@ -119,12 +119,11 @@ DividerLine DividerLine::create(glm::vec2 ref1, glm::vec2 ref2, const DividerLin
 
 void DividerLine::draw(float width) const {
   if (mesh.getNumVertices() == 0) {
-    mesh = ofMesh::plane(width, glm::distance(start, end), 2, 2, OF_PRIMITIVE_TRIANGLES);
+    mesh = ofMesh::plane(glm::distance(start, end) + width * 2.0, width, 2, 2, OF_PRIMITIVE_TRIANGLES);
   }
   ofPushMatrix();
-  ofTranslate(start);
+  ofTranslate((start+end)/2.0);
   ofRotateRad(std::atan2((end.y - start.y), (end.x - start.x)));
-  ofTranslate(0.0, -width / 2.0);
   mesh.draw();
   ofPopMatrix();
 }
@@ -136,6 +135,7 @@ void DividerLine::draw(const LineConfig& config) const {
       widthFactor = std::fminf(1.0, glm::distance(start, end) / config.adaptiveWidthMaxLength);
     }
     ofPath path;
+    // FIXME: add the max width to the length to avoid shortfall at edges
     path.moveTo(0.0, -widthFactor*config.minWidth/2.0);
     path.lineTo(glm::distance(start, end), -widthFactor*config.maxWidth/2.0);
     path.lineTo(glm::distance(start, end), widthFactor*config.maxWidth/2.0);

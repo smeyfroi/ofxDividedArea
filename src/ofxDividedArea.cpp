@@ -37,6 +37,7 @@ maxUnconstrainedDividerLines(maxUnconstrainedDividerLines_)
 {
   setupInstancedDraw(maxConstrainedLinesParameter);
   shader.load();
+  refractiveRectangleShader.load();
 }
 
 bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
@@ -307,7 +308,7 @@ void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstra
   ofPopMatrix();
 }
 
-void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale) const {
+void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale, const ofFbo& backgroundFbo) {
   ofPushMatrix();
   ofScale(scale);
   {
@@ -315,7 +316,13 @@ void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWid
       std::for_each(unconstrainedDividerLines.begin(),
                     unconstrainedDividerLines.end(),
                     [&](const auto& dl) {
-        dl.draw(unconstrainedLineWidth / scale);
+        float widthNorm = unconstrainedLineWidth / scale;
+        glm::vec2 size = { glm::distance(dl.start, dl.end) + 0.2, widthNorm }; // add 0.1 as a cap
+        refractiveRectangleShader.render((dl.start + dl.end) / 2.0f,
+                                         size,
+                                         std::atan2((dl.end.y - dl.start.y), (dl.end.x - dl.start.x)),
+                                         backgroundFbo);
+//        dl.draw(unconstrainedLineWidth / scale);
       });
     }
     if (areaConstraintLineWidth > 0) {
