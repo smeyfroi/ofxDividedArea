@@ -44,7 +44,10 @@ maxUnconstrainedDividerLines(maxUnconstrainedDividerLines_)
 bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
   if (maxUnconstrainedDividerLines < 0 || unconstrainedDividerLines.size() >= maxUnconstrainedDividerLines) return false;
   if (ref1 == ref2) return false;
+  
   Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
+  if (lineWithinArea.start == longestLine.start && lineWithinArea.end == longestLine.end) return false;
+  
   DividerLine dividerLine { ref1, ref2, lineWithinArea.start, lineWithinArea.end };
   float occlusionDistance = unconstrainedOcclusionDistanceParameter * size.x;
   if (dividerLine.isOccludedByAny(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) return false;
@@ -87,6 +90,11 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
       if (newRef1 == newRef2) continue;
 
       Line updatedLine = DividerLine::findEnclosedLine(newRef1, newRef2, areaConstraints);
+      if (updatedLine.start == longestLine.start && updatedLine.end == longestLine.end) {
+        unconstrainedDividerLines.erase(iter);
+        linesChanged = true;
+        break;
+      }
       line = DividerLine { newRef1, newRef2, updatedLine.start, updatedLine.end };
 
       if (line.isOccludedByAny(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) {
