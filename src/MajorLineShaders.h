@@ -86,20 +86,21 @@ protected:
 // Metallic shader - anisotropic specular across width
 class MetallicLineShader : public MajorLineShaderBase {
 public:
+  // GUI names prefixed for clarity; shader uniforms remain simple
   ofParameter<float> lightAngleParameter { "lightAngle", 0.0, -3.14159f, 3.14159f };
-  ofParameter<float> highlightSharpnessParameter { "highlightSharpness", 20.0, 1.0, 100.0 };
-  ofParameter<float> highlightIntensityParameter { "highlightIntensity", 1.0, 0.0, 3.0 };
-  ofParameter<float> anisotropyFrequencyParameter { "anisotropyFreq", 30.0, 0.0, 100.0 };
-  ofParameter<ofFloatColor> metalTintParameter { "metalTint", ofFloatColor(0.85, 0.86, 0.88, 1.0) };
+  ofParameter<float> metallicHighlightSharpnessParameter { "metallicHighlightSharpness", 20.0, 1.0, 100.0 };
+  ofParameter<float> metallicHighlightIntensityParameter { "metallicHighlightIntensity", 1.0, 0.0, 3.0 };
+  ofParameter<float> metallicAnisotropyFrequencyParameter { "metallicAnisotropyFreq", 30.0, 0.0, 100.0 };
+  ofParameter<ofFloatColor> metallicTintParameter { "metallicTint", ofFloatColor(0.85, 0.86, 0.88, 1.0) };
 
   ofParameterGroup& getParameterGroup() {
     if (parameters.size() == 0) {
-      parameters.setName("Metallic Line");
+      parameters.setName("Style: Metallic");
       parameters.add(lightAngleParameter);
-      parameters.add(highlightSharpnessParameter);
-      parameters.add(highlightIntensityParameter);
-      parameters.add(anisotropyFrequencyParameter);
-      parameters.add(metalTintParameter);
+      parameters.add(metallicHighlightSharpnessParameter);
+      parameters.add(metallicHighlightIntensityParameter);
+      parameters.add(metallicAnisotropyFrequencyParameter);
+      parameters.add(metallicTintParameter);
     }
     return parameters;
   }
@@ -109,10 +110,10 @@ protected:
                    const ofFbo* backgroundFbo) override {
     MajorLineShaderBase::setUniforms(color, width, length, backgroundFbo);
     shader.setUniform1f("lightAngle", lightAngleParameter);
-    shader.setUniform1f("highlightSharpness", highlightSharpnessParameter);
-    shader.setUniform1f("highlightIntensity", highlightIntensityParameter);
-    shader.setUniform1f("anisotropyFreq", anisotropyFrequencyParameter);
-    shader.setUniform4f("metalTint", metalTintParameter.get());
+    shader.setUniform1f("highlightSharpness", metallicHighlightSharpnessParameter);
+    shader.setUniform1f("highlightIntensity", metallicHighlightIntensityParameter);
+    shader.setUniform1f("anisotropyFreq", metallicAnisotropyFrequencyParameter);
+    shader.setUniform4f("metalTint", metallicTintParameter.get());
   }
 
   std::string getFragmentShader() override {
@@ -158,16 +159,16 @@ private:
 // Inner glow shader - bright edges, darker core
 class InnerGlowLineShader : public MajorLineShaderBase {
 public:
-  ofParameter<float> edgeBoostParameter { "edgeBoost", 1.0, 0.0, 3.0 };
-  ofParameter<float> coreDarknessParameter { "coreDarkness", 0.5, 0.0, 1.0 };
-  ofParameter<float> softnessParameter { "softness", 0.4, 0.0, 1.0 };
+  ofParameter<float> innerGlowEdgeBoostParameter { "innerGlowEdgeBoost", 1.0, 0.0, 3.0 };
+  ofParameter<float> innerGlowCoreDarknessParameter { "innerGlowCoreDarkness", 0.5, 0.0, 1.0 };
+  ofParameter<float> innerGlowSoftnessParameter { "innerGlowSoftness", 0.4, 0.0, 1.0 };
 
   ofParameterGroup& getParameterGroup() {
     if (parameters.size() == 0) {
-      parameters.setName("Inner Glow Line");
-      parameters.add(edgeBoostParameter);
-      parameters.add(coreDarknessParameter);
-      parameters.add(softnessParameter);
+      parameters.setName("Style: Inner Glow");
+      parameters.add(innerGlowEdgeBoostParameter);
+      parameters.add(innerGlowCoreDarknessParameter);
+      parameters.add(innerGlowSoftnessParameter);
     }
     return parameters;
   }
@@ -176,9 +177,9 @@ protected:
   void setUniforms(const ofFloatColor& color, float width, float length,
                    const ofFbo* backgroundFbo) override {
     MajorLineShaderBase::setUniforms(color, width, length, backgroundFbo);
-    shader.setUniform1f("edgeBoost", edgeBoostParameter);
-    shader.setUniform1f("coreDarkness", coreDarknessParameter);
-    shader.setUniform1f("softness", softnessParameter);
+    shader.setUniform1f("edgeBoost", innerGlowEdgeBoostParameter);
+    shader.setUniform1f("coreDarkness", innerGlowCoreDarknessParameter);
+    shader.setUniform1f("softness", innerGlowSoftnessParameter);
   }
 
   std::string getFragmentShader() override {
@@ -212,16 +213,16 @@ private:
 // Bloomed additive shader - neon tube look
 class BloomedAdditiveLineShader : public MajorLineShaderBase {
 public:
-  ofParameter<float> coreIntensityParameter { "coreIntensity", 1.2, 0.0, 4.0 };
-  ofParameter<float> haloRadiusParameter { "haloRadius", 0.5, 0.0, 1.0 };
-  ofParameter<float> haloFalloffParameter { "haloFalloff", 6.0, 0.5, 20.0 };
+  ofParameter<float> bloomedAdditiveCoreIntensityParameter { "bloomedAdditiveCoreIntensity", 1.2, 0.0, 4.0 };
+  ofParameter<float> bloomedAdditiveHaloRadiusParameter { "bloomedAdditiveHaloRadius", 0.5, 0.0, 1.0 };
+  ofParameter<float> bloomedAdditiveHaloFalloffParameter { "bloomedAdditiveHaloFalloff", 6.0, 0.5, 20.0 };
 
   ofParameterGroup& getParameterGroup() {
     if (parameters.size() == 0) {
-      parameters.setName("Bloomed Additive Line");
-      parameters.add(coreIntensityParameter);
-      parameters.add(haloRadiusParameter);
-      parameters.add(haloFalloffParameter);
+      parameters.setName("Style: Bloomed Additive");
+      parameters.add(bloomedAdditiveCoreIntensityParameter);
+      parameters.add(bloomedAdditiveHaloRadiusParameter);
+      parameters.add(bloomedAdditiveHaloFalloffParameter);
     }
     return parameters;
   }
@@ -237,9 +238,9 @@ protected:
   void setUniforms(const ofFloatColor& color, float width, float length,
                    const ofFbo* backgroundFbo) override {
     MajorLineShaderBase::setUniforms(color, width, length, backgroundFbo);
-    shader.setUniform1f("coreIntensity", coreIntensityParameter);
-    shader.setUniform1f("haloRadius", haloRadiusParameter);
-    shader.setUniform1f("haloFalloff", haloFalloffParameter);
+    shader.setUniform1f("coreIntensity", bloomedAdditiveCoreIntensityParameter);
+    shader.setUniform1f("haloRadius", bloomedAdditiveHaloRadiusParameter);
+    shader.setUniform1f("haloFalloff", bloomedAdditiveHaloFalloffParameter);
   }
 
   std::string getFragmentShader() override {
@@ -275,14 +276,14 @@ class GlowLineShader : public MajorLineShaderBase {
 public:
   ofParameter<float> glowFalloffParameter { "glowFalloff", 4.0, 0.5, 20.0 };
   ofParameter<float> glowIntensityParameter { "glowIntensity", 1.5, 0.0, 5.0 };
-  ofParameter<float> coreWidthParameter { "coreWidth", 0.3, 0.0, 1.0 };
+  ofParameter<float> glowCoreWidthParameter { "glowCoreWidth", 0.3, 0.0, 1.0 };
   
   ofParameterGroup& getParameterGroup() {
     if (parameters.size() == 0) {
-      parameters.setName("Glow Line");
+      parameters.setName("Style: Glow");
       parameters.add(glowFalloffParameter);
       parameters.add(glowIntensityParameter);
-      parameters.add(coreWidthParameter);
+      parameters.add(glowCoreWidthParameter);
     }
     return parameters;
   }
@@ -300,7 +301,7 @@ protected:
     MajorLineShaderBase::setUniforms(color, width, length, backgroundFbo);
     shader.setUniform1f("glowFalloff", glowFalloffParameter);
     shader.setUniform1f("glowIntensity", glowIntensityParameter);
-    shader.setUniform1f("coreWidth", coreWidthParameter);
+    shader.setUniform1f("coreWidth", glowCoreWidthParameter);
   }
   
   std::string getFragmentShader() override {
@@ -339,24 +340,24 @@ private:
 // Refractive line shader - glass-like distortion effect
 class RefractiveLineShader : public MajorLineShaderBase {
 public:
-  ofParameter<float> edgeThicknessParameter { "edgeThickness", 0.15, 0.0, 1.0 };
-  ofParameter<float> refractionStrengthParameter { "refractionStrength", 0.06, 0.0, 0.2 };
-  ofParameter<float> reflectionStrengthParameter { "reflectionStrength", 0.8, 0.0, 4.0 };
-  ofParameter<float> reflectionFalloffParameter { "reflectionFalloff", 1.2, 0.0, 4.0 };
-  ofParameter<float> reflectionOffsetParameter { "reflectionOffset", 0.05, 0.0, 1.0 };
-  ofParameter<float> fresnelStrengthParameter { "fresnelStrength", 0.05, 0.0, 1.0 };
-  ofParameter<float> fresnelFalloffParameter { "fresnelFalloff", 10.0, 0.0, 20.0 };
+  ofParameter<float> refractiveEdgeThicknessParameter { "refractiveEdgeThickness", 0.15, 0.0, 1.0 };
+  ofParameter<float> refractiveRefractionStrengthParameter { "refractiveRefractionStrength", 0.06, 0.0, 0.2 };
+  ofParameter<float> refractiveReflectionStrengthParameter { "refractiveReflectionStrength", 0.8, 0.0, 4.0 };
+  ofParameter<float> refractiveReflectionFalloffParameter { "refractiveReflectionFalloff", 1.2, 0.0, 4.0 };
+  ofParameter<float> refractiveReflectionOffsetParameter { "refractiveReflectionOffset", 0.05, 0.0, 1.0 };
+  ofParameter<float> refractiveFresnelStrengthParameter { "refractiveFresnelStrength", 0.05, 0.0, 1.0 };
+  ofParameter<float> refractiveFresnelFalloffParameter { "refractiveFresnelFalloff", 10.0, 0.0, 20.0 };
   
   ofParameterGroup& getParameterGroup() {
     if (parameters.size() == 0) {
-      parameters.setName("Refractive Line");
-      parameters.add(edgeThicknessParameter);
-      parameters.add(refractionStrengthParameter);
-      parameters.add(reflectionStrengthParameter);
-      parameters.add(reflectionFalloffParameter);
-      parameters.add(reflectionOffsetParameter);
-      parameters.add(fresnelStrengthParameter);
-      parameters.add(fresnelFalloffParameter);
+      parameters.setName("Style: Refractive");
+      parameters.add(refractiveEdgeThicknessParameter);
+      parameters.add(refractiveRefractionStrengthParameter);
+      parameters.add(refractiveReflectionStrengthParameter);
+      parameters.add(refractiveReflectionFalloffParameter);
+      parameters.add(refractiveReflectionOffsetParameter);
+      parameters.add(refractiveFresnelStrengthParameter);
+      parameters.add(refractiveFresnelFalloffParameter);
     }
     return parameters;
   }
@@ -380,13 +381,13 @@ protected:
   void setUniforms(const ofFloatColor& color, float width, float length,
                    const ofFbo* backgroundFbo) override {
     MajorLineShaderBase::setUniforms(color, width, length, backgroundFbo);
-    shader.setUniform1f("edgeThicknessNorm", edgeThicknessParameter);
-    shader.setUniform1f("refractionStrength", refractionStrengthParameter);
-    shader.setUniform1f("reflectionStrength", reflectionStrengthParameter);
-    shader.setUniform1f("reflectionFalloff", reflectionFalloffParameter);
-    shader.setUniform1f("reflectionOffset", reflectionOffsetParameter);
-    shader.setUniform1f("fresnelStrength", fresnelStrengthParameter);
-    shader.setUniform1f("fresnelFalloff", fresnelFalloffParameter);
+    shader.setUniform1f("edgeThicknessNorm", refractiveEdgeThicknessParameter);
+    shader.setUniform1f("refractionStrength", refractiveRefractionStrengthParameter);
+    shader.setUniform1f("reflectionStrength", refractiveReflectionStrengthParameter);
+    shader.setUniform1f("reflectionFalloff", refractiveReflectionFalloffParameter);
+    shader.setUniform1f("reflectionOffset", refractiveReflectionOffsetParameter);
+    shader.setUniform1f("fresnelStrength", refractiveFresnelStrengthParameter);
+    shader.setUniform1f("fresnelFalloff", refractiveFresnelFalloffParameter);
   }
   
   std::string getFragmentShader() override {
@@ -484,14 +485,14 @@ private:
 // Chromatic aberration shader - RGB channel split at edges
 class ChromaticAberrationLineShader : public MajorLineShaderBase {
 public:
-  ofParameter<float> aberrationStrengthParameter { "aberrationStrength", 0.02, 0.0, 0.1 };
-  ofParameter<float> edgeThicknessParameter { "edgeThickness", 0.3, 0.0, 1.0 };
+  ofParameter<float> chromaticAberrationStrengthParameter { "chromaticAberrationStrength", 0.02, 0.0, 0.1 };
+  ofParameter<float> chromaticAberrationEdgeThicknessParameter { "chromaticAberrationEdgeThickness", 0.3, 0.0, 1.0 };
   
   ofParameterGroup& getParameterGroup() {
     if (parameters.size() == 0) {
-      parameters.setName("Chromatic Aberration Line");
-      parameters.add(aberrationStrengthParameter);
-      parameters.add(edgeThicknessParameter);
+      parameters.setName("Style: Chromatic Aberration");
+      parameters.add(chromaticAberrationStrengthParameter);
+      parameters.add(chromaticAberrationEdgeThicknessParameter);
     }
     return parameters;
   }
@@ -515,8 +516,8 @@ protected:
   void setUniforms(const ofFloatColor& color, float width, float length,
                    const ofFbo* backgroundFbo) override {
     MajorLineShaderBase::setUniforms(color, width, length, backgroundFbo);
-    shader.setUniform1f("aberrationStrength", aberrationStrengthParameter);
-    shader.setUniform1f("edgeThickness", edgeThicknessParameter);
+    shader.setUniform1f("aberrationStrength", chromaticAberrationStrengthParameter);
+    shader.setUniform1f("edgeThickness", chromaticAberrationEdgeThicknessParameter);
   }
   
   std::string getFragmentShader() override {
@@ -565,14 +566,14 @@ private:
 // Blur/refraction shader - screen-space blur with mild refraction near edges
 class BlurRefractionLineShader : public MajorLineShaderBase {
 public:
-  ofParameter<float> blurRadiusParameter { "blurRadius", 1.5, 0.0, 8.0 }; // in pixels
-  ofParameter<float> refractionStrengthParameter { "refractionStrength", 0.015, 0.0, 0.1 };
+  ofParameter<float> blurRefractionBlurRadiusParameter { "blurRefractionBlurRadius", 1.5, 0.0, 8.0 }; // in pixels
+  ofParameter<float> blurRefractionStrengthParameter { "blurRefractionStrength", 0.015, 0.0, 0.1 };
 
   ofParameterGroup& getParameterGroup() {
     if (parameters.size() == 0) {
-      parameters.setName("Blur/Refraction Line");
-      parameters.add(blurRadiusParameter);
-      parameters.add(refractionStrengthParameter);
+      parameters.setName("Style: Blur/Refraction");
+      parameters.add(blurRefractionBlurRadiusParameter);
+      parameters.add(blurRefractionStrengthParameter);
     }
     return parameters;
   }
@@ -596,8 +597,8 @@ protected:
   void setUniforms(const ofFloatColor& color, float width, float length,
                    const ofFbo* backgroundFbo) override {
     MajorLineShaderBase::setUniforms(color, width, length, backgroundFbo);
-    shader.setUniform1f("blurRadius", blurRadiusParameter);
-    shader.setUniform1f("refractStrength", refractionStrengthParameter);
+    shader.setUniform1f("blurRadius", blurRefractionBlurRadiusParameter);
+    shader.setUniform1f("refractStrength", blurRefractionStrengthParameter);
   }
 
   std::string getFragmentShader() override {
