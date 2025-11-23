@@ -27,7 +27,16 @@ ofParameterGroup& DividedArea::getParameterGroup() {
     parameters.add(minWidthFactorEndParameter);
     parameters.add(maxWidthFactorEndParameter);
     parameters.add(constrainedWidthParameter);
-    parameters.add(refractiveRectangleShader.getParameterGroup());
+    parameters.add(majorLineStyleParameter);
+
+    // Add nested shader parameter groups
+    parameters.add(metallicLineShader->getParameterGroup());
+    parameters.add(innerGlowLineShader->getParameterGroup());
+    parameters.add(bloomedAdditiveLineShader->getParameterGroup());
+    parameters.add(glowLineShader->getParameterGroup());
+    parameters.add(refractiveLineShader->getParameterGroup());
+    parameters.add(blurRefractionLineShader->getParameterGroup());
+    parameters.add(chromaticAberrationLineShader->getParameterGroup());
   }
   return parameters;
 }
@@ -38,7 +47,31 @@ maxUnconstrainedDividerLines(maxUnconstrainedDividerLines_)
 {
   setupInstancedDraw(maxConstrainedLinesParameter);
   shader.load();
-  refractiveRectangleShader.load();
+
+  // Create and load all style shaders upfront so their parameters are available
+  solidLineShader = std::make_unique<SolidLineShader>();
+  solidLineShader->load();
+
+  metallicLineShader = std::make_unique<MetallicLineShader>();
+  metallicLineShader->load();
+
+  innerGlowLineShader = std::make_unique<InnerGlowLineShader>();
+  innerGlowLineShader->load();
+
+  bloomedAdditiveLineShader = std::make_unique<BloomedAdditiveLineShader>();
+  bloomedAdditiveLineShader->load();
+
+  glowLineShader = std::make_unique<GlowLineShader>();
+  glowLineShader->load();
+
+  refractiveLineShader = std::make_unique<RefractiveLineShader>();
+  refractiveLineShader->load();
+
+  blurRefractionLineShader = std::make_unique<BlurRefractionLineShader>();
+  blurRefractionLineShader->load();
+
+  chromaticAberrationLineShader = std::make_unique<ChromaticAberrationLineShader>();
+  chromaticAberrationLineShader->load();
 }
 
 bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
@@ -339,21 +372,101 @@ void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstra
   ofPopMatrix();
 }
 
+void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, float scale, const ofFbo& backgroundFbo) {
+  ofPushMatrix();
+  ofScale(scale);
+  ofEnableBlendMode(OF_BLENDMODE_ALPHA);
+  ofFill();
+  ofDisableDepthTest();
+  {
+    if (areaConstraintLineConfig.maxWidth > 0.0) {
+      areaConstraintLineConfig.scale(scale);
+      std::for_each(areaConstraints.begin(),
+                    areaConstraints.end(),
+                    [&](const auto& dl) {
+        dl.draw(areaConstraintLineConfig);
+      });
+    }
+    if (unconstrainedLineConfig.maxWidth > 0.0) {
+      ofFloatColor color = unconstrainedLineConfig.color;
+      std::for_each(unconstrainedDividerLines.begin(),
+                    unconstrainedDividerLines.end(),
+                    [&](const auto& dl) {
+        drawMajorLine(dl, unconstrainedLineConfig.maxWidth, scale, color, &backgroundFbo);
+      });
+    }
+  }
+  ofPopMatrix();
+}
+
+void DividedArea::drawMajorLine(const DividerLine& dl, float width, float scale,
+                                 const ofFloatColor& color, const ofFbo* backgroundFbo) {
+  MajorLineStyle style = getMajorLineStyle();
+  float widthNorm = width / scale;
+  
+  switch (style) {
+    case MajorLineStyle::Solid:
+      solidLineShader->render(dl.start, dl.end, widthNorm, color, backgroundFbo);
+      break;
+    case MajorLineStyle::Metallic:
+      metallicLineShader->render(dl.start, dl.end, widthNorm, color, backgroundFbo);
+      break;
+      
+    case MajorLineStyle::InnerGlow:
+      innerGlowLineShader->render(dl.start, dl.end, widthNorm, color, backgroundFbo);
+      break;
+      
+    case MajorLineStyle::BloomedAdditive:
+      bloomedAdditiveLineShader->render(dl.start, dl.end, widthNorm, color, backgroundFbo);
+      break;
+      
+    case MajorLineStyle::Glow:
+      glowLineShader->render(dl.start, dl.end, widthNorm, color, backgroundFbo);
+      break;
+      
+    case MajorLineStyle::Refractive:
+      if (backgroundFbo) {
+        if (!refractiveLineShader) {
+          refractiveLineShader = std::make_unique<RefractiveLineShader>();
+          refractiveLineShader->load();
+        }
+        refractiveLineShader->render(dl.start, dl.end, widthNorm, color, backgroundFbo);
+      }
+      break;
+      
+    case MajorLineStyle::ChromaticAberration:
+      if (backgroundFbo) {
+        if (!chromaticAberrationLineShader) {
+          chromaticAberrationLineShader = std::make_unique<ChromaticAberrationLineShader>();
+          chromaticAberrationLineShader->load();
+        }
+        chromaticAberrationLineShader->render(dl.start, dl.end, widthNorm, color, backgroundFbo);
+      }
+      break;
+      
+    case MajorLineStyle::BlurRefraction:
+      if (backgroundFbo) {
+        blurRefractionLineShader->render(dl.start, dl.end, widthNorm, color, backgroundFbo);
+      }
+      break;
+      
+    default:
+      // Fallback to solid
+      dl.draw(widthNorm);
+      break;
+  }
+}
+
 void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale, const ofFbo& backgroundFbo) {
   ofPushMatrix();
   ofScale(scale);
   {
     if (unconstrainedLineWidth > 0) {
+      ofFloatColor defaultColor { 1.0f, 1.0f, 1.0f, 1.0f };
       std::for_each(unconstrainedDividerLines.begin(),
                     unconstrainedDividerLines.end(),
                     [&](const auto& dl) {
-        float widthNorm = unconstrainedLineWidth / scale;
-        glm::vec2 size = { glm::distance(dl.start, dl.end) + 0.2, widthNorm }; // add 0.1 as a cap
-        refractiveRectangleShader.render((dl.start + dl.end) / 2.0f,
-                                         size,
-                                         std::atan2((dl.end.y - dl.start.y), (dl.end.x - dl.start.x)),
-                                         backgroundFbo);
-//        dl.draw(unconstrainedLineWidth / scale);
+        drawMajorLine(dl, unconstrainedLineWidth, scale, defaultColor, &backgroundFbo);
       });
     }
     if (areaConstraintLineWidth > 0) {

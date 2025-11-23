@@ -2,6 +2,7 @@
 
 #include "glm/vec2.hpp"
 #include <vector>
+#include <memory>
 #include "ofColor.h"
 #include "DividerLine.hpp"
 #include "ofxGui.h"
@@ -11,7 +12,8 @@
 #include "ofMesh.h"
 #include "LineGeom.h"
 #include "DividerLineShader.h"
-#include "RefractiveRectangleShader.h"
+#include "MajorLineStyle.h"
+#include "MajorLineShaders.h"
 
 struct DividerInstance {
   glm::vec2 p0;
@@ -47,6 +49,7 @@ public:
   
   void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale, const ofFbo& backgroundFbo);
   void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, float scale = 1.0) const;
+  void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, float scale, const ofFbo& backgroundFbo);
   
   std::string getParameterGroupName() const { return "Divided Area"; }
   ofParameterGroup parameters;
@@ -62,8 +65,11 @@ public:
   ofParameter<float> minWidthFactorEndParameter { "minWidthFactorEnd", 0.4, 0.0, 1.0 }; // when tapering, minimum width factor at end
   ofParameter<float> maxWidthFactorEndParameter { "maxWidthFactorEnd", 0.9, 0.0, 1.0 }; // when tapering, maximum width factor at end
   ofParameter<float> constrainedWidthParameter { "constrainedWidth", 1.0/500.0f, 0.0, 0.01 };
+  ofParameter<int> majorLineStyleParameter { "majorLineStyle", static_cast<int>(MajorLineStyle::Refractive), 0, static_cast<int>(MajorLineStyle::Count) - 1 };
 
   ofParameterGroup& getParameterGroup();
+  MajorLineStyle getMajorLineStyle() const { return static_cast<MajorLineStyle>(majorLineStyleParameter.get()); }
+  void setMajorLineStyle(MajorLineStyle style) { majorLineStyleParameter = static_cast<int>(style); }
 
   // Instanced rendering data
   void drawInstanced(float scale = 1.0f);
@@ -81,5 +87,16 @@ private:
   int head = 0;
   mutable bool instancesDirty = false;
 
-  RefractiveRectangleShader refractiveRectangleShader;
+  // Major line style shaders (lazy-loaded)
+  std::unique_ptr<SolidLineShader> solidLineShader;
+  std::unique_ptr<MetallicLineShader> metallicLineShader;
+  std::unique_ptr<InnerGlowLineShader> innerGlowLineShader;
+  std::unique_ptr<BloomedAdditiveLineShader> bloomedAdditiveLineShader;
+  std::unique_ptr<GlowLineShader> glowLineShader;
+  std::unique_ptr<RefractiveLineShader> refractiveLineShader;
+  std::unique_ptr<BlurRefractionLineShader> blurRefractionLineShader;
+  std::unique_ptr<ChromaticAberrationLineShader> chromaticAberrationLineShader;
+  
+  void drawMajorLine(const DividerLine& dl, float width, float scale, 
+                     const ofFloatColor& color, const ofFbo* backgroundFbo);
 };

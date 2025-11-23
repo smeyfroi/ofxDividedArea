@@ -26,4 +26,5 @@ public:
   std::vector<glm::vec2> majorRefPoints;
   
   ofxPanel gui;
+  ofFbo backgroundFbo; // For styles that need background sampling (Refractive, ChromaticAberration)
 };
