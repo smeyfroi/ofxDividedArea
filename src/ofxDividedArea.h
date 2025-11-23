@@ -23,7 +23,7 @@ struct DividerInstance {
 
 class DividedArea {
 public:
-  DividedArea(glm::vec2 size = {1.0, 1.0}, int maxUnconstrainedDividerLines = 7);
+  DividedArea(glm::vec2 size = {1.0, 1.0}, int maxUnconstrainedDividerLines = 3);
 
   glm::vec2 size;
   int maxUnconstrainedDividerLines;
