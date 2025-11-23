@@ -58,100 +58,122 @@ bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
 // Update unconstrainedDividerLines to move towards the passed reference
 // points (which can be glm::vec4), adding and deleting max one per call
 // to maintain the number required.
+//
+// This algorithm matches existing lines to candidate lines by ENDPOINT proximity
+// (not ref point proximity), then lerps endpoints directly for smooth motion.
 template<typename PT, typename A>
 bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majorRefPoints) {
-  float closePointDistance = closePointDistanceParameter * size.x;
-  float closePointDistance2 = closePointDistance * closePointDistance;
   float occlusionDistance = unconstrainedOcclusionDistanceParameter * size.x;
+  float closePointDistance = closePointDistanceParameter * size.x;
+  float endpointMatchThreshold2 = closePointDistance * closePointDistance * 4.0f; // squared threshold for endpoint matching
+  float lerpAmount = lerpAmountParameter;
 
   bool linesChanged = false;
 
-  // Find an obsolete line with reference points not in majorRefPoints,
-  // then replace with a close equivalent or delete it
-  for (auto iter = unconstrainedDividerLines.begin(); iter != unconstrainedDividerLines.end(); iter++) {
+  // 1. Build candidate lines from all pairs of ref points
+  struct CandidateLine {
+    glm::vec2 ref1, ref2;
+    glm::vec2 start, end;
+    bool used = false;
+  };
+  std::vector<CandidateLine> candidates;
+  candidates.reserve(majorRefPoints.size() * (majorRefPoints.size() - 1) / 2);
+
+  for (size_t i = 0; i < majorRefPoints.size(); ++i) {
+    for (size_t j = i + 1; j < majorRefPoints.size(); ++j) {
+      glm::vec2 r1 = glm::vec2(majorRefPoints[i]);
+      glm::vec2 r2 = glm::vec2(majorRefPoints[j]);
+      if (r1 == r2) continue;
+
+      Line enclosed = DividerLine::findEnclosedLine(r1, r2, areaConstraints);
+      // Skip degenerate lines
+      if (enclosed.start == longestLine.start && enclosed.end == longestLine.end) continue;
+
+      candidates.push_back({r1, r2, enclosed.start, enclosed.end, false});
+    }
+  }
+
+  // 2. For each existing line, find best candidate by endpoint proximity and lerp
+  int keptCount = 0;
+  for (auto iter = unconstrainedDividerLines.begin(); iter != unconstrainedDividerLines.end(); ) {
+    // Enforce max count - delete excess lines
+    if (maxUnconstrainedDividerLines >= 0 && keptCount >= maxUnconstrainedDividerLines) {
+      iter = unconstrainedDividerLines.erase(iter);
+      linesChanged = true;
+      continue;
+    }
+
     auto& line = *iter;
-//    line.age = std::min(10, line.age + 1);
-    
-    // find close points that might be replacements
-    std::optional<glm::vec2> replacementRef1 = geom::findClosePoint(majorRefPoints, line.ref1, closePointDistance);
-    std::optional<glm::vec2> replacementRef2 = geom::findClosePoint(majorRefPoints, line.ref2, closePointDistance);
-    
-    if (replacementRef1.has_value() && replacementRef2.has_value()) {
-      
-      // continue if no change
-      if (replacementRef1.value() == line.ref1 && replacementRef2.value() == line.ref2) continue;
-      
-      // Move towards updated ref points
-//      ofLogNotice() << "move " << line.ref1.x << ":" << replacementRef1.value().x << " , " << line.ref1.y << ":" << replacementRef1.value().y;
-      float lerp = lerpAmountParameter;
-      auto newRef1 = glm::mix(line.ref1, replacementRef1.value(), lerp);
-      auto newRef2 = glm::mix(line.ref2, replacementRef2.value(), lerp);
-      
-      if (newRef1 == newRef2) continue;
 
-      Line updatedLine = DividerLine::findEnclosedLine(newRef1, newRef2, areaConstraints);
-      if (updatedLine.start == longestLine.start && updatedLine.end == longestLine.end) {
-        unconstrainedDividerLines.erase(iter);
-        linesChanged = true;
-        break;
+    float bestScore = std::numeric_limits<float>::max();
+    CandidateLine* bestCandidate = nullptr;
+    bool bestFlipped = false;
+
+    for (auto& candidate : candidates) {
+      if (candidate.used) continue;
+
+      // Score by sum of squared endpoint distances; try both orientations
+      float score1 = glm::distance2(line.start, candidate.start)
+                   + glm::distance2(line.end, candidate.end);
+      float score2 = glm::distance2(line.start, candidate.end)
+                   + glm::distance2(line.end, candidate.start);
+
+      bool flipped = score2 < score1;
+      float score = flipped ? score2 : score1;
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestCandidate = &candidate;
+        bestFlipped = flipped;
       }
-      line = DividerLine { newRef1, newRef2, updatedLine.start, updatedLine.end };
+    }
 
+    // If a good match exists, lerp endpoints directly
+    if (bestCandidate && bestScore < endpointMatchThreshold2) {
+      bestCandidate->used = true;
+
+      glm::vec2 targetStart = bestFlipped ? bestCandidate->end : bestCandidate->start;
+      glm::vec2 targetEnd = bestFlipped ? bestCandidate->start : bestCandidate->end;
+
+      // Lerp endpoints directly for smooth visual motion
+      line.start = glm::mix(line.start, targetStart, lerpAmount);
+      line.end = glm::mix(line.end, targetEnd, lerpAmount);
+
+      // Update ref points to track the new candidate
+      line.ref1 = bestCandidate->ref1;
+      line.ref2 = bestCandidate->ref2;
+
+      // Check for occlusion after update
       if (line.isOccludedByAny(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) {
-//        ofLogNotice() << "occluded " << newRef1.x << "," << newRef1.y << " : " <<  newRef2.x << "," << newRef2.y;
-        unconstrainedDividerLines.erase(iter);
+        iter = unconstrainedDividerLines.erase(iter);
         linesChanged = true;
-        break;
+        continue;
       }
 
+      linesChanged = true;
+      ++keptCount;
+      ++iter;
     } else {
-      // Obsolete line
-      auto iter1 = std::find_if(majorRefPoints.begin(),
-                                majorRefPoints.end(),
-                                [&](const auto& p) {
-        return !DividerLine::isRefPointUsed(unconstrainedDividerLines, p, closePointDistanceParameter);
-      });
-      auto iter2 = std::find_if(iter1 + 1,
-                                majorRefPoints.end(),
-                                [&](const auto& p) {
-        return !DividerLine::isRefPointUsed(unconstrainedDividerLines, p, closePointDistanceParameter);
-      });
-      if (iter1 != majorRefPoints.end() && iter2 != majorRefPoints.end()) {
-        line.ref1 = *iter1;
-        line.ref2 = *iter2;
-//        ofLogNotice() << "replace ref1 and ref2";
-      } else {
-//        line.age -= 2;
-//        if (line.age <= 0) {
-          // delete max one and break for simplicity
-          unconstrainedDividerLines.erase(iter);
-          linesChanged = true;
-//          ofLogNotice() << "delete";
-//        }
-        break; // for simplicity break here after finding one divider line that is obsolete
+      // No good match - delete this line
+      iter = unconstrainedDividerLines.erase(iter);
+      linesChanged = true;
+    }
+  }
+
+  // 3. Add one new line from unused candidates (if under max)
+  if (maxUnconstrainedDividerLines < 0 || static_cast<int>(unconstrainedDividerLines.size()) < maxUnconstrainedDividerLines) {
+    for (auto& candidate : candidates) {
+      if (candidate.used) continue;
+
+      DividerLine newLine { candidate.ref1, candidate.ref2, candidate.start, candidate.end };
+      if (!newLine.isOccludedByAny(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) {
+        unconstrainedDividerLines.push_back(newLine);
+        linesChanged = true;
+        break; // add max one per call
       }
     }
+  }
 
-    linesChanged = true;
-  }
-  
-  // add max one
-  auto iter1 = std::find_if(majorRefPoints.begin(),
-                            majorRefPoints.end(),
-                            [&](const auto& p) {
-    return !DividerLine::isRefPointUsed(unconstrainedDividerLines, p, closePointDistanceParameter);
-  });
-  if (iter1 < majorRefPoints.end()) {
-    auto iter2 = std::find_if(iter1 + 1,
-                              majorRefPoints.end(),
-                              [&](const auto& p) {
-      return !DividerLine::isRefPointUsed(unconstrainedDividerLines, p, closePointDistanceParameter);
-    });
-    if (iter1 != majorRefPoints.end() && iter2 != majorRefPoints.end()) {
-      linesChanged |= addUnconstrainedDividerLine(*iter1, *iter2);
-    }
-  }
-  
   return linesChanged;
 }
 
