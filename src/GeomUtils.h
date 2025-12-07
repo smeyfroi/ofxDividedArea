@@ -7,11 +7,16 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <optional>
+#include <utility>
+#include <vector>
+
 #include "glm/vec2.hpp"
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/norm.hpp"
-#include <cmath>
-#include <limits>
 
 namespace geom {
   constexpr float EPS = 1e-6f;

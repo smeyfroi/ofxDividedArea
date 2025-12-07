@@ -1,8 +1,10 @@
 #pragma once
 
-#include "glm/vec2.hpp"
-#include <vector>
 #include <memory>
+#include <optional>
+#include <vector>
+
+#include "glm/vec2.hpp"
 #include "ofColor.h"
 #include "DividerLine.hpp"
 #include "ofxGui.h"

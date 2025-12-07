@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "ofMath.h"
 #include "glm/vec2.hpp"
 
