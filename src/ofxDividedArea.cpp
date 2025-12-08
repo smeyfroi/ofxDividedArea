@@ -28,7 +28,7 @@ ofParameterGroup& DividedArea::getParameterGroup() {
     parameters.add(maxWidthFactorEndParameter);
     parameters.add(constrainedWidthParameter);
     parameters.add(majorLineStyleParameter);
-
+    
     // Add nested shader parameter groups
     parameters.add(metallicLineShader->getParameterGroup());
     parameters.add(innerGlowLineShader->getParameterGroup());
@@ -47,29 +47,29 @@ maxUnconstrainedDividerLines(maxUnconstrainedDividerLines_)
 {
   setupInstancedDraw(maxConstrainedLinesParameter);
   shader.load();
-
+  
   // Create and load all style shaders upfront so their parameters are available
   solidLineShader = std::make_unique<SolidLineShader>();
   solidLineShader->load();
-
+  
   metallicLineShader = std::make_unique<MetallicLineShader>();
   metallicLineShader->load();
-
+  
   innerGlowLineShader = std::make_unique<InnerGlowLineShader>();
   innerGlowLineShader->load();
-
+  
   bloomedAdditiveLineShader = std::make_unique<BloomedAdditiveLineShader>();
   bloomedAdditiveLineShader->load();
-
+  
   glowLineShader = std::make_unique<GlowLineShader>();
   glowLineShader->load();
-
+  
   refractiveLineShader = std::make_unique<RefractiveLineShader>();
   refractiveLineShader->load();
-
+  
   blurRefractionLineShader = std::make_unique<BlurRefractionLineShader>();
   blurRefractionLineShader->load();
-
+  
   chromaticAberrationLineShader = std::make_unique<ChromaticAberrationLineShader>();
   chromaticAberrationLineShader->load();
 }
@@ -100,9 +100,9 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
   float closePointDistance = closePointDistanceParameter * size.x;
   float endpointMatchThreshold2 = closePointDistance * closePointDistance * 4.0f; // squared threshold for endpoint matching
   float lerpAmount = lerpAmountParameter;
-
+  
   bool linesChanged = false;
-
+  
   // 1. Build candidate lines from all pairs of ref points
   struct CandidateLine {
     glm::vec2 ref1, ref2;
@@ -111,21 +111,21 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
   };
   std::vector<CandidateLine> candidates;
   candidates.reserve(majorRefPoints.size() * (majorRefPoints.size() - 1) / 2);
-
+  
   for (size_t i = 0; i < majorRefPoints.size(); ++i) {
     for (size_t j = i + 1; j < majorRefPoints.size(); ++j) {
       glm::vec2 r1 = glm::vec2(majorRefPoints[i]);
       glm::vec2 r2 = glm::vec2(majorRefPoints[j]);
       if (r1 == r2) continue;
-
+      
       Line enclosed = DividerLine::findEnclosedLine(r1, r2, areaConstraints);
       // Skip degenerate lines
       if (enclosed.start == longestLine.start && enclosed.end == longestLine.end) continue;
-
+      
       candidates.push_back({r1, r2, enclosed.start, enclosed.end, false});
     }
   }
-
+  
   // 2. For each existing line, find best candidate by endpoint proximity and lerp
   int keptCount = 0;
   for (auto iter = unconstrainedDividerLines.begin(); iter != unconstrainedDividerLines.end(); ) {
@@ -135,54 +135,54 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
       linesChanged = true;
       continue;
     }
-
+    
     auto& line = *iter;
-
+    
     float bestScore = std::numeric_limits<float>::max();
     CandidateLine* bestCandidate = nullptr;
     bool bestFlipped = false;
-
+    
     for (auto& candidate : candidates) {
       if (candidate.used) continue;
-
+      
       // Score by sum of squared endpoint distances; try both orientations
       float score1 = glm::distance2(line.start, candidate.start)
-                   + glm::distance2(line.end, candidate.end);
+      + glm::distance2(line.end, candidate.end);
       float score2 = glm::distance2(line.start, candidate.end)
-                   + glm::distance2(line.end, candidate.start);
-
+      + glm::distance2(line.end, candidate.start);
+      
       bool flipped = score2 < score1;
       float score = flipped ? score2 : score1;
-
+      
       if (score < bestScore) {
         bestScore = score;
         bestCandidate = &candidate;
         bestFlipped = flipped;
       }
     }
-
+    
     // If a good match exists, lerp endpoints directly
     if (bestCandidate && bestScore < endpointMatchThreshold2) {
       bestCandidate->used = true;
-
+      
       glm::vec2 targetStart = bestFlipped ? bestCandidate->end : bestCandidate->start;
       glm::vec2 targetEnd = bestFlipped ? bestCandidate->start : bestCandidate->end;
-
+      
       // Lerp endpoints directly for smooth visual motion
       line.start = glm::mix(line.start, targetStart, lerpAmount);
       line.end = glm::mix(line.end, targetEnd, lerpAmount);
-
+      
       // Update ref points to track the new candidate
       line.ref1 = bestCandidate->ref1;
       line.ref2 = bestCandidate->ref2;
-
+      
       // Check for occlusion after update
       if (line.isOccludedByAny(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) {
         iter = unconstrainedDividerLines.erase(iter);
         linesChanged = true;
         continue;
       }
-
+      
       linesChanged = true;
       ++keptCount;
       ++iter;
@@ -192,12 +192,12 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
       linesChanged = true;
     }
   }
-
+  
   // 3. Add one new line from unused candidates (if under max)
   if (maxUnconstrainedDividerLines < 0 || static_cast<int>(unconstrainedDividerLines.size()) < maxUnconstrainedDividerLines) {
     for (auto& candidate : candidates) {
       if (candidate.used) continue;
-
+      
       DividerLine newLine { candidate.ref1, candidate.ref2, candidate.start, candidate.end };
       if (!newLine.isOccludedByAny(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) {
         unconstrainedDividerLines.push_back(newLine);
@@ -206,7 +206,7 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
       }
     }
   }
-
+  
   return linesChanged;
 }
 
@@ -263,15 +263,15 @@ void DividedArea::setupInstancedDraw(int newInstanceCapacity) {
     quad.addIndex(2); quad.addIndex(3); quad.addIndex(0);
     vbo.setMesh(quad, GL_STATIC_DRAW);
   }
-
+  
   instanceCapacity = newInstanceCapacity;
   instances.resize(instanceCapacity);
   head = std::min(head, instanceCapacity - 1);
   instanceCount = std::min(instanceCount, instanceCapacity);
   instancesDirty = true;
-
+  
   instanceBO.allocate(instances, GL_DYNAMIC_DRAW);
-
+  
   // bind per-instance attributes
   vbo.bind();
   GLsizei stride = sizeof(DividerInstance);
@@ -297,7 +297,7 @@ void DividedArea::addDividerInstanced(const glm::vec2& a, const glm::vec2& b, fl
   if (instanceCapacity != maxConstrainedLinesParameter) {
     setupInstancedDraw(maxConstrainedLinesParameter);
   }
-
+  
   if (instanceCount == instanceCapacity) {
     head = (head + 1) % instanceCapacity;
     instanceCount--;
@@ -326,21 +326,21 @@ static void syncInstanceBufferIfNeeded(const std::vector<DividerInstance>& insta
 
 void DividedArea::drawInstanced(float scale) {
   if (instanceCount == 0) return;
-
+  
   if (instancesDirty) {
     syncInstanceBufferIfNeeded(instances, head, instanceCount, instanceCapacity, instanceBO);
     instancesDirty = false;
   }
-   
+  
   ofPushMatrix();
   ofScale(scale);
   ofEnableBlendMode(OF_BLENDMODE_ALPHA);
   ofFill(); glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); ofDisableDepthTest();
   shader.begin(maxTaperLengthParameter,
-                minWidthFactorStartParameter,
-                maxWidthFactorStartParameter,
-                minWidthFactorEndParameter,
-                maxWidthFactorEndParameter);
+               minWidthFactorStartParameter,
+               maxWidthFactorStartParameter,
+               minWidthFactorEndParameter,
+               maxWidthFactorEndParameter);
   vbo.bind();
   vbo.drawElementsInstanced(GL_TRIANGLES, quad.getNumIndices(), instanceCount);
   vbo.unbind();
@@ -400,7 +400,7 @@ void DividedArea::draw(LineConfig areaConstraintLineConfig, LineConfig unconstra
 }
 
 void DividedArea::drawMajorLine(const DividerLine& dl, float width, float scale,
-                                 const ofFloatColor& color, const ofFbo* backgroundFbo) {
+                                const ofFloatColor& color, const ofFbo* backgroundFbo) {
   MajorLineStyle style = getMajorLineStyle();
   float widthNorm = width / scale;
   
