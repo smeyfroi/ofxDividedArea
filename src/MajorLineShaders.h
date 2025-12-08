@@ -83,85 +83,12 @@ protected:
 };
 
 
-// Metallic shader - anisotropic specular across width
-class MetallicLineShader : public MajorLineShaderBase {
-public:
-  // GUI names prefixed for clarity; shader uniforms remain simple
-  ofParameter<float> lightAngleParameter { "lightAngle", 0.0, -3.14159f, 3.14159f };
-  ofParameter<float> metallicHighlightSharpnessParameter { "metallicHighlightSharpness", 20.0, 1.0, 100.0 };
-  ofParameter<float> metallicHighlightIntensityParameter { "metallicHighlightIntensity", 1.0, 0.0, 3.0 };
-  ofParameter<float> metallicAnisotropyFrequencyParameter { "metallicAnisotropyFreq", 30.0, 0.0, 100.0 };
-  ofParameter<ofFloatColor> metallicTintParameter { "metallicTint", ofFloatColor(0.85, 0.86, 0.88, 1.0) };
-
-  ofParameterGroup& getParameterGroup() {
-    if (parameters.size() == 0) {
-      parameters.setName("Style: Metallic");
-      parameters.add(lightAngleParameter);
-      parameters.add(metallicHighlightSharpnessParameter);
-      parameters.add(metallicHighlightIntensityParameter);
-      parameters.add(metallicAnisotropyFrequencyParameter);
-      parameters.add(metallicTintParameter);
-    }
-    return parameters;
-  }
-
-protected:
-  void setUniforms(const ofFloatColor& color, float width, float length,
-                   const ofFbo* backgroundFbo) override {
-    MajorLineShaderBase::setUniforms(color, width, length, backgroundFbo);
-    shader.setUniform1f("lightAngle", lightAngleParameter);
-    shader.setUniform1f("highlightSharpness", metallicHighlightSharpnessParameter);
-    shader.setUniform1f("highlightIntensity", metallicHighlightIntensityParameter);
-    shader.setUniform1f("anisotropyFreq", metallicAnisotropyFrequencyParameter);
-    shader.setUniform4f("metalTint", metallicTintParameter.get());
-  }
-
-  std::string getFragmentShader() override {
-    return GLSL(
-      in vec2 localPos;
-      out vec4 fragColor;
-      uniform vec4 lineColor;
-      uniform float lightAngle;
-      uniform float highlightSharpness;
-      uniform float highlightIntensity;
-      uniform float anisotropyFreq;
-      uniform vec4 metalTint;
-
-      void main() {
-        vec2 p = localPos; // -0.5..0.5
-        vec2 absLocal = abs(p);
-        if (absLocal.x > 0.5 || absLocal.y > 0.5) discard;
-
-        // Normal across width (Y is width)
-        vec2 n = normalize(vec2(0.0, sign(p.y) + 1e-5));
-        // Light direction in local space
-        vec2 L = vec2(cos(lightAngle), sin(lightAngle));
-        // Specular-like term focused at center (y=0)
-        float viewDotHalf = 1.0 - abs(p.y) * 2.0; // 1 at center, 0 at edge
-        viewDotHalf = clamp(viewDotHalf, 0.0, 1.0);
-        float spec = pow(viewDotHalf, highlightSharpness) * highlightIntensity;
-
-        // Anisotropy streaks along length (x)
-        float streaks = 0.5 + 0.5 * sin((p.x + 0.5) * anisotropyFreq * 6.28318);
-        streaks *= 0.35; // subtle
-
-        vec3 base = lineColor.rgb * metalTint.rgb;
-        vec3 color = base + (spec + streaks) * vec3(1.0);
-        fragColor = vec4(color, lineColor.a);
-      }
-    );
-  }
-
-private:
-  ofParameterGroup parameters;
-};
-
 // Inner glow shader - bright edges, darker core
 class InnerGlowLineShader : public MajorLineShaderBase {
 public:
-  ofParameter<float> innerGlowEdgeBoostParameter { "innerGlowEdgeBoost", 1.0, 0.0, 3.0 };
+  ofParameter<float> innerGlowEdgeBoostParameter { "innerGlowEdgeBoost", 0.4, 0.0, 3.0 };
   ofParameter<float> innerGlowCoreDarknessParameter { "innerGlowCoreDarkness", 0.5, 0.0, 1.0 };
-  ofParameter<float> innerGlowSoftnessParameter { "innerGlowSoftness", 0.4, 0.0, 1.0 };
+  ofParameter<float> innerGlowSoftnessParameter { "innerGlowSoftness", 0.65, 0.0, 1.0 };
 
   ofParameterGroup& getParameterGroup() {
     if (parameters.size() == 0) {
@@ -213,8 +140,8 @@ private:
 // Bloomed additive shader - neon tube look
 class BloomedAdditiveLineShader : public MajorLineShaderBase {
 public:
-  ofParameter<float> bloomedAdditiveCoreIntensityParameter { "bloomedAdditiveCoreIntensity", 1.2, 0.0, 4.0 };
-  ofParameter<float> bloomedAdditiveHaloRadiusParameter { "bloomedAdditiveHaloRadius", 0.5, 0.0, 1.0 };
+  ofParameter<float> bloomedAdditiveCoreIntensityParameter { "bloomedAdditiveCoreIntensity", 0.3, 0.0, 4.0 };
+  ofParameter<float> bloomedAdditiveHaloRadiusParameter { "bloomedAdditiveHaloRadius", 0.8, 0.0, 1.0 };
   ofParameter<float> bloomedAdditiveHaloFalloffParameter { "bloomedAdditiveHaloFalloff", 6.0, 0.5, 20.0 };
 
   ofParameterGroup& getParameterGroup() {
@@ -274,9 +201,9 @@ private:
 // Glow shader - additive blend with gaussian falloff (across width)
 class GlowLineShader : public MajorLineShaderBase {
 public:
-  ofParameter<float> glowFalloffParameter { "glowFalloff", 4.0, 0.5, 20.0 };
-  ofParameter<float> glowIntensityParameter { "glowIntensity", 1.5, 0.0, 5.0 };
-  ofParameter<float> glowCoreWidthParameter { "glowCoreWidth", 0.3, 0.0, 1.0 };
+  ofParameter<float> glowFalloffParameter { "glowFalloff", 6.0, 0.5, 20.0 };
+  ofParameter<float> glowIntensityParameter { "glowIntensity", 1.0, 0.0, 5.0 };
+  ofParameter<float> glowCoreWidthParameter { "glowCoreWidth", 0.1, 0.0, 1.0 };
   
   ofParameterGroup& getParameterGroup() {
     if (parameters.size() == 0) {
@@ -485,8 +412,8 @@ private:
 // Chromatic aberration shader - RGB channel split at edges
 class ChromaticAberrationLineShader : public MajorLineShaderBase {
 public:
-  ofParameter<float> chromaticAberrationStrengthParameter { "chromaticAberrationStrength", 0.02, 0.0, 0.1 };
-  ofParameter<float> chromaticAberrationEdgeThicknessParameter { "chromaticAberrationEdgeThickness", 0.3, 0.0, 1.0 };
+  ofParameter<float> chromaticAberrationStrengthParameter { "chromaticAberrationStrength", 0.03, 0.0, 0.1 };
+  ofParameter<float> chromaticAberrationEdgeThicknessParameter { "chromaticAberrationEdgeThickness", 0.5, 0.0, 1.0 };
   
   ofParameterGroup& getParameterGroup() {
     if (parameters.size() == 0) {

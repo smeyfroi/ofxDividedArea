@@ -49,7 +49,7 @@ public:
   DividerLine createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const;
   std::optional<DividerLine> addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2, ofFloatColor color, float overriddenWidth = -1.0);
   
-  void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale, const ofFbo& backgroundFbo);
+  void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale, const ofFbo& backgroundFbo, const ofFloatColor& color = ofFloatColor(1.0f));
   void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, float scale = 1.0) const;
   void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, float scale, const ofFbo& backgroundFbo);
   
@@ -91,7 +91,6 @@ private:
 
   // Major line style shaders (lazy-loaded)
   std::unique_ptr<SolidLineShader> solidLineShader;
-  std::unique_ptr<MetallicLineShader> metallicLineShader;
   std::unique_ptr<InnerGlowLineShader> innerGlowLineShader;
   std::unique_ptr<BloomedAdditiveLineShader> bloomedAdditiveLineShader;
   std::unique_ptr<GlowLineShader> glowLineShader;

@@ -30,7 +30,6 @@ ofParameterGroup& DividedArea::getParameterGroup() {
     parameters.add(majorLineStyleParameter);
     
     // Add nested shader parameter groups
-    parameters.add(metallicLineShader->getParameterGroup());
     parameters.add(innerGlowLineShader->getParameterGroup());
     parameters.add(bloomedAdditiveLineShader->getParameterGroup());
     parameters.add(glowLineShader->getParameterGroup());
@@ -51,9 +50,6 @@ maxUnconstrainedDividerLines(maxUnconstrainedDividerLines_)
   // Create and load all style shaders upfront so their parameters are available
   solidLineShader = std::make_unique<SolidLineShader>();
   solidLineShader->load();
-  
-  metallicLineShader = std::make_unique<MetallicLineShader>();
-  metallicLineShader->load();
   
   innerGlowLineShader = std::make_unique<InnerGlowLineShader>();
   innerGlowLineShader->load();
@@ -408,9 +404,6 @@ void DividedArea::drawMajorLine(const DividerLine& dl, float width, float scale,
     case MajorLineStyle::Solid:
       solidLineShader->render(dl.start, dl.end, widthNorm, color, backgroundFbo);
       break;
-    case MajorLineStyle::Metallic:
-      metallicLineShader->render(dl.start, dl.end, widthNorm, color, backgroundFbo);
-      break;
       
     case MajorLineStyle::InnerGlow:
       innerGlowLineShader->render(dl.start, dl.end, widthNorm, color, backgroundFbo);
@@ -457,16 +450,15 @@ void DividedArea::drawMajorLine(const DividerLine& dl, float width, float scale,
   }
 }
 
-void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale, const ofFbo& backgroundFbo) {
+void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale, const ofFbo& backgroundFbo, const ofFloatColor& color) {
   ofPushMatrix();
   ofScale(scale);
   {
     if (unconstrainedLineWidth > 0) {
-      ofFloatColor defaultColor { 1.0f, 1.0f, 1.0f, 1.0f };
       std::for_each(unconstrainedDividerLines.begin(),
                     unconstrainedDividerLines.end(),
                     [&](const auto& dl) {
-        drawMajorLine(dl, unconstrainedLineWidth, scale, defaultColor, &backgroundFbo);
+        drawMajorLine(dl, unconstrainedLineWidth, scale, color, &backgroundFbo);
       });
     }
     if (areaConstraintLineWidth > 0) {

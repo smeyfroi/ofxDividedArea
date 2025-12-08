@@ -12,7 +12,6 @@
 
 enum class MajorLineStyle {
   Solid = 0,          // Simple flat-colored line
-  Metallic,           // Anisotropic metallic highlight
   InnerGlow,          // Light edges, darker core
   BloomedAdditive,    // Neon tube: core + halo (additive)
   Glow,               // Additive gaussian falloff
@@ -25,7 +24,6 @@ enum class MajorLineStyle {
 inline std::string majorLineStyleToString(MajorLineStyle style) {
   switch (style) {
     case MajorLineStyle::Solid: return "Solid";
-    case MajorLineStyle::Metallic: return "Metallic";
     case MajorLineStyle::InnerGlow: return "Inner Glow";
     case MajorLineStyle::BloomedAdditive: return "Bloomed Additive";
     case MajorLineStyle::Glow: return "Glow";
