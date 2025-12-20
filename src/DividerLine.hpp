@@ -45,11 +45,20 @@ public:
   mutable ofVboMesh mesh;
 
   static Line findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine = longestLine);
+  
+  // Templated version for containers of DividerLine subclasses (e.g., SmoothedDividerLine)
+  template<typename Container>
+  static Line findEnclosedLineIn(glm::vec2 ref1, glm::vec2 ref2, const Container& constraints, const Line& startLine = longestLine);
+  
   static DividerLine create(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine = longestLine);
   void draw(float width) const;
   void draw(const LineConfig& config) const;
   bool isOccludedBy(const DividerLine& dividerLine, float distanceTolerance, float gradientTolerance) const;
   bool isOccludedByAny(const DividerLines& dividerLines, float distanceTolerance, float gradientTolerance) const; // gradients close when dot product > gradientTolerance (dot product == 1 when codirectional)
+  
+  // Templated version for containers of DividerLine subclasses (e.g., SmoothedDividerLine)
+  template<typename Container>
+  bool isOccludedByAnyOf(const Container& dividerLines, float distanceTolerance, float gradientTolerance) const;
 
   template<typename PT>
   static bool isRefPointUsed(const DividerLines& dividerLines, const PT refPoint, const float closePointDistance);

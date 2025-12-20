@@ -7,6 +7,7 @@
 #include "glm/vec2.hpp"
 #include "ofColor.h"
 #include "DividerLine.hpp"
+#include "SmoothedDividerLine.hpp"
 #include "ofxGui.h"
 #include "ofVbo.h"
 #include "ofBufferObject.h"
@@ -37,7 +38,7 @@ public:
     {size, {0.0, size.y}, size, {0.0, size.y}},
     {{0.0, size.y}, {0.0, 0.0}, {0.0, size.y}, {0.0, 0.0}}
   };
-  DividerLines unconstrainedDividerLines; // unconstrained, across the entire area
+  std::vector<SmoothedDividerLine> unconstrainedDividerLines; // unconstrained, across the entire area, with velocity-based smoothing
   DividerLines constrainedDividerLines; // constrained by all other divider lines
   
   bool addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2);
@@ -55,7 +56,9 @@ public:
   
   std::string getParameterGroupName() const { return "Divided Area"; }
   ofParameterGroup parameters;
-  ofParameter<float> lerpAmountParameter { "unconstrainedLerpAmount", 0.5, 0.0, 1.0 };
+  ofParameter<float> lerpAmountParameter { "unconstrainedLerpAmount", 0.5, 0.0, 1.0 }; // DEPRECATED: use unconstrainedSmoothness instead
+  ofParameter<float> unconstrainedSmoothnessParameter { "unconstrainedSmoothness", 0.5, 0.0, 1.0 }; // 0=responsive, 1=dreamy
+  ofParameter<float> minRefPointDistanceParameter { "minRefPointDistance", 0.08, 0.0, 0.3 }; // below this, damping increases to prevent angular jitter
   ofParameter<float> closePointDistanceParameter { "unconstrainedClosePoint", 0.03, 0.0, 1.0 };
   ofParameter<float> unconstrainedOcclusionDistanceParameter { "unconstrainedOcclusionDistance", 0.05, 0.0, 0.1 };
   ofParameter<float> constrainedOcclusionDistanceParameter { "constrainedOcclusionDistance", 0.0015, 0.0, 0.01 };

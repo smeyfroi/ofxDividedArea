@@ -72,6 +72,15 @@ bool DividerLine::isOccludedByAny(const DividerLines& dividerLines, float distan
   });
 }
 
+template<typename Container>
+bool DividerLine::isOccludedByAnyOf(const Container& dividerLines, float distanceTolerance, float gradientTolerance) const {
+  return std::any_of(dividerLines.cbegin(),
+                     dividerLines.cend(),
+                     [&](const auto& dl) {
+    return (isOccludedBy(dl, distanceTolerance, gradientTolerance));
+  });
+}
+
 // Quantised hash to ensure random but stable results
 static inline uint32_t mix32(uint32_t x) {
   x ^= x >> 16; x *= 0x7feb352d;
@@ -91,6 +100,29 @@ static inline uint32_t hashVec2(const glm::vec2& v) {
 
 // Shrink the startLine towards a reference point to fit inside the constraints
 Line DividerLine::findEnclosedLine(glm::vec2 ref1, glm::vec2 ref2, const DividerLines& constraints, const Line& startLine) {
+  glm::vec2 start = startLine.start, end = startLine.end;
+
+  // Order-independent pair hash for randomised but stable choice of shrinkTowards point
+  uint32_t h1 = hashVec2(ref1), h2 = hashVec2(ref2);
+  uint32_t pairHash = (h1 < h2) ? (h1 * 0x85ebca6bu ^ h2) : (h2 * 0x85ebca6bu ^ h1);
+
+  const glm::vec2& shrinkTowards = (pairHash & 1u) ? ref1 : ref2;
+
+  for (const auto& constraint : constraints) {
+    if ((ref1 == constraint.ref1 && ref2 == constraint.ref2) || (ref2 == constraint.ref1 && ref1 == constraint.ref2)) {
+      continue; // don't constrain by self
+    }
+    if (auto intersection = lineToSegmentIntersection(ref1, ref2, constraint.start, constraint.end)) {
+      shrinkLineToIntersectionAroundReferencePoint(start, end, *intersection, shrinkTowards);
+    }
+  }
+  
+  return Line { start, end };
+}
+
+// Templated version for containers of DividerLine subclasses (e.g., SmoothedDividerLine)
+template<typename Container>
+Line DividerLine::findEnclosedLineIn(glm::vec2 ref1, glm::vec2 ref2, const Container& constraints, const Line& startLine) {
   glm::vec2 start = startLine.start, end = startLine.end;
 
   // Order-independent pair hash for randomised but stable choice of shrinkTowards point
@@ -163,3 +195,10 @@ bool DividerLine::isRefPointUsed(const DividerLines& dividerLines, const PT refP
 template bool DividerLine::isRefPointUsed<glm::vec2>(const DividerLines& dividerLines, const glm::vec2 refPoint, const float closePointDistance);
 template bool DividerLine::isRefPointUsed<glm::vec3>(const DividerLines& dividerLines, const glm::vec3 refPoint, const float closePointDistance);
 template bool DividerLine::isRefPointUsed<glm::vec4>(const DividerLines& dividerLines, const glm::vec4 refPoint, const float closePointDistance);
+
+// Include SmoothedDividerLine for explicit template instantiations
+#include "SmoothedDividerLine.hpp"
+
+// Explicit instantiations for SmoothedDividerLine containers
+template bool DividerLine::isOccludedByAnyOf<std::vector<SmoothedDividerLine>>(const std::vector<SmoothedDividerLine>& dividerLines, float distanceTolerance, float gradientTolerance) const;
+template Line DividerLine::findEnclosedLineIn<std::vector<SmoothedDividerLine>>(glm::vec2 ref1, glm::vec2 ref2, const std::vector<SmoothedDividerLine>& constraints, const Line& startLine);

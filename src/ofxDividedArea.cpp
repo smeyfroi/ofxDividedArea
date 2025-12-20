@@ -2,6 +2,7 @@
 #include "ofGraphics.h"
 #include "ofMath.h"
 #include "ofPath.h"
+#include "ofMain.h"
 #include "LineGeom.h"
 #include "GeomUtils.h"
 
@@ -16,6 +17,8 @@ ofParameterGroup& DividedArea::getParameterGroup() {
   if (parameters.size() == 0) {
     parameters.setName(getParameterGroupName());
     parameters.add(lerpAmountParameter);
+    parameters.add(unconstrainedSmoothnessParameter);
+    parameters.add(minRefPointDistanceParameter);
     parameters.add(closePointDistanceParameter);
     parameters.add(unconstrainedOcclusionDistanceParameter);
     parameters.add(constrainedOcclusionDistanceParameter);
@@ -71,7 +74,7 @@ maxUnconstrainedDividerLines(maxUnconstrainedDividerLines_)
 }
 
 bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
-  if (maxUnconstrainedDividerLines < 0 || unconstrainedDividerLines.size() >= maxUnconstrainedDividerLines) return false;
+  if (maxUnconstrainedDividerLines < 0 || static_cast<int>(unconstrainedDividerLines.size()) >= maxUnconstrainedDividerLines) return false;
   if (ref1 == ref2) return false;
   
   Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
@@ -79,8 +82,11 @@ bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
   
   DividerLine dividerLine { ref1, ref2, lineWithinArea.start, lineWithinArea.end };
   float occlusionDistance = unconstrainedOcclusionDistanceParameter * size.x;
-  if (dividerLine.isOccludedByAny(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) return false;
-  unconstrainedDividerLines.push_back(dividerLine);
+  if (dividerLine.isOccludedByAnyOf(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) return false;
+  
+  SmoothedDividerLine smoothedLine;
+  smoothedLine.initializeFrom(dividerLine);
+  unconstrainedDividerLines.push_back(smoothedLine);
   return true;
 }
 
@@ -89,13 +95,35 @@ bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
 // to maintain the number required.
 //
 // This algorithm matches existing lines to candidate lines by ENDPOINT proximity
-// (not ref point proximity), then lerps endpoints directly for smooth motion.
+// (not ref point proximity), then uses spring-damper physics with zone-based
+// hysteresis for smooth, non-jerky motion even with unstable audio/video clusters.
+//
+// Zone-based hysteresis: proposals within a stability radius are accumulated,
+// and their centroid becomes the target once stable for N frames.
+//
+// Deletion hysteresis: lines without matches persist for several frames before
+// being removed, preventing flicker during brief cluster instability.
 template<typename PT, typename A>
 bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majorRefPoints) {
   float occlusionDistance = unconstrainedOcclusionDistanceParameter * size.x;
   float closePointDistance = closePointDistanceParameter * size.x;
   float endpointMatchThreshold2 = closePointDistance * closePointDistance * 4.0f; // squared threshold for endpoint matching
-  float lerpAmount = lerpAmountParameter;
+  float minRefPointDistance = minRefPointDistanceParameter * size.x;
+  
+  // Stability radius for zone-based hysteresis: proposals within this distance
+  // of the zone center are accumulated for centroid calculation
+  float stabilityRadius = closePointDistance * 0.5f;
+  
+  // Get smoothing parameters from the single smoothness control
+  float smoothness = unconstrainedSmoothnessParameter;
+  float springStrength = SmoothedDividerLine::smoothnessToSpringStrength(smoothness);
+  float damping = SmoothedDividerLine::smoothnessToDamping(smoothness);
+  int hysteresisFrames = SmoothedDividerLine::smoothnessToHysteresisFrames(smoothness);
+  int deleteHysteresisFrames = SmoothedDividerLine::smoothnessToDeleteHysteresisFrames(smoothness);
+  
+  // Frame-rate independent physics
+  float dt = ofGetLastFrameTime();
+  if (dt <= 0.0f || dt > 0.1f) dt = 1.0f / 60.0f; // clamp to reasonable range
   
   bool linesChanged = false;
   
@@ -103,6 +131,7 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
   struct CandidateLine {
     glm::vec2 ref1, ref2;
     glm::vec2 start, end;
+    float refPointDistance;
     bool used = false;
   };
   std::vector<CandidateLine> candidates;
@@ -118,11 +147,12 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
       // Skip degenerate lines
       if (enclosed.start == longestLine.start && enclosed.end == longestLine.end) continue;
       
-      candidates.push_back({r1, r2, enclosed.start, enclosed.end, false});
+      float refDist = glm::distance(r1, r2);
+      candidates.push_back({r1, r2, enclosed.start, enclosed.end, refDist, false});
     }
   }
   
-  // 2. For each existing line, find best candidate by endpoint proximity and lerp
+  // 2. For each existing line, find best candidate by endpoint proximity
   int keptCount = 0;
   for (auto iter = unconstrainedDividerLines.begin(); iter != unconstrainedDividerLines.end(); ) {
     // Enforce max count - delete excess lines
@@ -157,23 +187,26 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
       }
     }
     
-    // If a good match exists, lerp endpoints directly
+    // If a good match exists, propose target and update with physics
     if (bestCandidate && bestScore < endpointMatchThreshold2) {
       bestCandidate->used = true;
       
       glm::vec2 targetStart = bestFlipped ? bestCandidate->end : bestCandidate->start;
       glm::vec2 targetEnd = bestFlipped ? bestCandidate->start : bestCandidate->end;
       
-      // Lerp endpoints directly for smooth visual motion
-      line.start = glm::mix(line.start, targetStart, lerpAmount);
-      line.end = glm::mix(line.end, targetEnd, lerpAmount);
-      
       // Update ref points to track the new candidate
       line.ref1 = bestCandidate->ref1;
       line.ref2 = bestCandidate->ref2;
       
+      // Propose new target (subject to zone-based hysteresis)
+      line.proposeTarget(targetStart, targetEnd, stabilityRadius);
+      
+      // Update with spring-damper physics
+      line.updateSmoothed(dt, springStrength, damping, hysteresisFrames,
+                          bestCandidate->refPointDistance, minRefPointDistance);
+      
       // Check for occlusion after update
-      if (line.isOccludedByAny(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) {
+      if (line.isOccludedByAnyOf(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) {
         iter = unconstrainedDividerLines.erase(iter);
         linesChanged = true;
         continue;
@@ -183,9 +216,20 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
       ++keptCount;
       ++iter;
     } else {
-      // No good match - delete this line
-      iter = unconstrainedDividerLines.erase(iter);
-      linesChanged = true;
+      // No good match this frame - apply deletion hysteresis
+      line.framesWithoutMatch++;
+      
+      if (line.framesWithoutMatch >= deleteHysteresisFrames) {
+        // Line has been without a match for too long - delete it
+        iter = unconstrainedDividerLines.erase(iter);
+        linesChanged = true;
+      } else {
+        // Keep the line alive, continue physics toward existing target
+        line.updateSmoothed(dt, springStrength, damping, hysteresisFrames,
+                            minRefPointDistance, minRefPointDistance);
+        ++keptCount;
+        ++iter;
+      }
     }
   }
   
@@ -195,8 +239,10 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
       if (candidate.used) continue;
       
       DividerLine newLine { candidate.ref1, candidate.ref2, candidate.start, candidate.end };
-      if (!newLine.isOccludedByAny(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) {
-        unconstrainedDividerLines.push_back(newLine);
+      if (!newLine.isOccludedByAnyOf(unconstrainedDividerLines, occlusionDistance, occlusionAngleParameter)) {
+        SmoothedDividerLine smoothedLine;
+        smoothedLine.initializeFrom(newLine);
+        unconstrainedDividerLines.push_back(smoothedLine);
         linesChanged = true;
         break; // add max one per call
       }
@@ -223,7 +269,7 @@ void DividedArea::deleteEarlyConstrainedDividerLines(size_t count) {
 
 DividerLine DividedArea::createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const {
   Line lineWithinArea = DividerLine::findEnclosedLine(ref1, ref2, areaConstraints);
-  Line lineWithinUnconstrainedDividerLines = DividerLine::findEnclosedLine(ref1, ref2, unconstrainedDividerLines, lineWithinArea);
+  Line lineWithinUnconstrainedDividerLines = DividerLine::findEnclosedLineIn(ref1, ref2, unconstrainedDividerLines, lineWithinArea);
   return DividerLine::create(ref1, ref2, constrainedDividerLines, lineWithinUnconstrainedDividerLines);
 }
 
