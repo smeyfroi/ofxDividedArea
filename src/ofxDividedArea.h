@@ -51,6 +51,11 @@ public:
   std::optional<DividerLine> addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2, ofFloatColor color, float overriddenWidth = -1.0);
   
   void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale, const ofFbo& backgroundFbo, const ofFloatColor& color = ofFloatColor(1.0f));
+  
+  /// Draw major (unconstrained) lines without a background FBO.
+  /// Only works with background-free styles (Solid, InnerGlow, BloomedAdditive, Glow).
+  /// If the current style requires a background FBO, falls back to Solid.
+  void drawMajorLinesWithoutBackground(float unconstrainedLineWidth, float scale, const ofFloatColor& color = ofFloatColor(1.0f));
   void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, float scale = 1.0) const;
   void draw(LineConfig areaConstraintLineConfig, LineConfig unconstrainedLineConfig, float scale, const ofFbo& backgroundFbo);
   

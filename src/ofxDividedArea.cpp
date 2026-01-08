@@ -517,3 +517,52 @@ void DividedArea::draw(float areaConstraintLineWidth, float unconstrainedLineWid
   }
   ofPopMatrix();
 }
+
+void DividedArea::drawMajorLinesWithoutBackground(float unconstrainedLineWidth, float scale, const ofFloatColor& color) {
+  if (unconstrainedLineWidth <= 0) return;
+  
+  MajorLineStyle style = getMajorLineStyle();
+  
+  // If current style requires background, log warning and fall back to Solid
+  if (majorLineStyleRequiresBackground(style)) {
+    ofLogWarning("DividedArea") << "Major line style '" << majorLineStyleToString(style)
+                                << "' requires background FBO but none provided. "
+                                << "Falling back to Solid style for non-overlay layer.";
+    style = MajorLineStyle::Solid;
+  }
+  
+  ofPushMatrix();
+  ofScale(scale);
+  ofEnableBlendMode(OF_BLENDMODE_ALPHA);
+  ofFill();
+  ofDisableDepthTest();
+  
+  float widthNorm = unconstrainedLineWidth / scale;
+  
+  for (const auto& dl : unconstrainedDividerLines) {
+    switch (style) {
+      case MajorLineStyle::Solid:
+        solidLineShader->render(dl.start, dl.end, widthNorm, color, nullptr);
+        break;
+        
+      case MajorLineStyle::InnerGlow:
+        innerGlowLineShader->render(dl.start, dl.end, widthNorm, color, nullptr);
+        break;
+        
+      case MajorLineStyle::BloomedAdditive:
+        bloomedAdditiveLineShader->render(dl.start, dl.end, widthNorm, color, nullptr);
+        break;
+        
+      case MajorLineStyle::Glow:
+        glowLineShader->render(dl.start, dl.end, widthNorm, color, nullptr);
+        break;
+        
+      default:
+        // Fallback to basic solid line
+        dl.draw(widthNorm);
+        break;
+    }
+  }
+  
+  ofPopMatrix();
+}

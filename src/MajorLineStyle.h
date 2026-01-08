@@ -41,3 +41,12 @@ inline std::vector<std::string> getMajorLineStyleNames() {
   }
   return names;
 }
+
+/// Returns true if the major line style requires a background FBO for rendering.
+/// Background-free styles (Solid, InnerGlow, BloomedAdditive, Glow) can be drawn
+/// into non-overlay layers without access to the composite FBO.
+inline bool majorLineStyleRequiresBackground(MajorLineStyle style) {
+  return style == MajorLineStyle::Refractive ||
+         style == MajorLineStyle::ChromaticAberration ||
+         style == MajorLineStyle::BlurRefraction;
+}
