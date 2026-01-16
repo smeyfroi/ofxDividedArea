@@ -68,7 +68,7 @@ public:
   ofParameter<float> unconstrainedOcclusionDistanceParameter { "unconstrainedOcclusionDistance", 0.05, 0.0, 0.1 };
   ofParameter<float> constrainedOcclusionDistanceParameter { "constrainedOcclusionDistance", 0.0015, 0.0, 0.01 };
   ofParameter<float> occlusionAngleParameter { "occlusionAngle", 0.97, 0.0, 1.0 }; // 0.0 if perpendicular, 1.0 if coincident
-  ofParameter<int> maxConstrainedLinesParameter { "maxConstrainedLines", 800, 100, 10000 };
+  ofParameter<int> maxConstrainedLinesParameter { "maxConstrainedLines", 800, 50, 10000 };
   ofParameter<float> maxTaperLengthParameter { "maxTaperLength", 1000.0, 100.0, 6000.0 }; // vary widths over this px length
   ofParameter<float> minWidthFactorStartParameter { "minWidthFactorStart", 0.6, 0.0, 1.0 }; // when tapering, minimum width factor at start of taper
   ofParameter<float> maxWidthFactorStartParameter { "maxWidthFactorStart", 1.0, 0.0, 1.0 }; // when tapering, maximum width factor at start of taper
