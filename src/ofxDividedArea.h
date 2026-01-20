@@ -30,6 +30,18 @@ class DividedArea {
 public:
   DividedArea(glm::vec2 size = {1.0, 1.0}, int maxUnconstrainedDividerLines = 3);
 
+  struct ParameterOverrides {
+    std::optional<float> unconstrainedSmoothness;
+
+    bool operator==(const ParameterOverrides& other) const {
+      return unconstrainedSmoothness == other.unconstrainedSmoothness;
+    }
+    bool operator!=(const ParameterOverrides& other) const { return !(*this == other); }
+  };
+
+  void setParameterOverrides(const ParameterOverrides& overrides);
+  void clearParameterOverrides();
+
   glm::vec2 size;
   int maxUnconstrainedDividerLines;
   DividerLines areaConstraints {
@@ -86,6 +98,8 @@ public:
   void addDividerInstanced(const glm::vec2& a, const glm::vec2& b, float width, bool taper, const ofFloatColor& col);
 
 private:
+  float getUnconstrainedSmoothnessEffective() const;
+
   void setupInstancedDraw(int instanceNumber);
   std::vector<DividerInstance> instances; // ring buffer
   mutable ofBufferObject instanceBO; // GPU buffer for instances
@@ -108,4 +122,6 @@ private:
   
   void drawMajorLine(const DividerLine& dl, float width, float scale, 
                      const ofFloatColor& color, const ofFbo* backgroundFbo);
+
+  ParameterOverrides parameterOverrides_;
 };

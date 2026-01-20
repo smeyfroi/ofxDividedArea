@@ -73,6 +73,20 @@ maxUnconstrainedDividerLines(maxUnconstrainedDividerLines_)
   chromaticAberrationLineShader->load();
 }
 
+void DividedArea::setParameterOverrides(const ParameterOverrides& overrides) {
+  if (parameterOverrides_ == overrides) return;
+  parameterOverrides_ = overrides;
+}
+
+void DividedArea::clearParameterOverrides() {
+  if (parameterOverrides_ == ParameterOverrides {}) return;
+  parameterOverrides_ = {};
+}
+
+float DividedArea::getUnconstrainedSmoothnessEffective() const {
+  return parameterOverrides_.unconstrainedSmoothness.value_or(unconstrainedSmoothnessParameter.get());
+}
+
 bool DividedArea::addUnconstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) {
   if (maxUnconstrainedDividerLines < 0 || static_cast<int>(unconstrainedDividerLines.size()) >= maxUnconstrainedDividerLines) return false;
   if (ref1 == ref2) return false;
@@ -115,7 +129,7 @@ bool DividedArea::updateUnconstrainedDividerLines(const std::vector<PT, A>& majo
   float stabilityRadius = closePointDistance * 0.5f;
   
   // Get smoothing parameters from the single smoothness control
-  float smoothness = unconstrainedSmoothnessParameter;
+  float smoothness = getUnconstrainedSmoothnessEffective();
   float springStrength = SmoothedDividerLine::smoothnessToSpringStrength(smoothness);
   float damping = SmoothedDividerLine::smoothnessToDamping(smoothness);
   int hysteresisFrames = SmoothedDividerLine::smoothnessToHysteresisFrames(smoothness);
