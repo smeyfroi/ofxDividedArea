@@ -5,6 +5,7 @@
 #include "ofMain.h"
 #include "LineGeom.h"
 #include "GeomUtils.h"
+#include <algorithm>
 
 static constexpr int ATTR_LOC_POS = 0;
 static constexpr int ATTR_LOC_P0 = 1;
@@ -275,10 +276,23 @@ void DividedArea::clearConstrainedDividerLines() {
 }
 
 void DividedArea::deleteEarlyConstrainedDividerLines(size_t count) {
-  auto startIter = constrainedDividerLines.begin();
-  auto endIter = constrainedDividerLines.begin() + count;
-  if (endIter > constrainedDividerLines.end()) endIter = constrainedDividerLines.end();
-  constrainedDividerLines.erase(startIter, endIter);
+  if (count == 0) return;
+  if (count > constrainedDividerLines.size()) count = constrainedDividerLines.size();
+  constrainedDividerLines.erase(constrainedDividerLines.begin(),
+                                constrainedDividerLines.begin() + count);
+  // Also advance the instance ring buffer past the removed entries — the
+  // instance buffer holds only constrained lines (major lines render from
+  // unconstrainedDividerLines directly), and addConstrainedDividerLine
+  // appends to both vector and ring in lockstep, so removing the front N
+  // from the vector matches removing the front N from the ring.
+  // Without this, deleted lines would keep being drawn each frame until
+  // the ring naturally wrapped.
+  if (instanceCount > 0 && instanceCapacity > 0) {
+    int toRemove = static_cast<int>(std::min<size_t>(count, static_cast<size_t>(instanceCount)));
+    head = (head + toRemove) % instanceCapacity;
+    instanceCount -= toRemove;
+    instancesDirty = true;
+  }
 }
 
 DividerLine DividedArea::createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const {
