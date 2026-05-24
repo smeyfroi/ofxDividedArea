@@ -35,6 +35,9 @@ ofParameterGroup& DividedArea::getParameterGroup() {
     parameters.add(centerWidthFactorParameter);
     parameters.add(extendBeyondCanvasParameter);
     parameters.add(lineLengthMinFactorParameter);
+    parameters.add(linePositionFadeWidthParameter);
+    parameters.add(linePositionEdgeFactorParameter);
+    parameters.add(linePositionCenterFactorParameter);
     parameters.add(constrainedWidthParameter);
     parameters.add(majorLineStyleParameter);
     
@@ -420,7 +423,10 @@ void DividedArea::drawInstanced(float scale) {
                edgeWidthFactorParameter,
                centerWidthFactorParameter,
                extendBeyondCanvasParameter,
-               lineLengthMinFactorParameter);
+               lineLengthMinFactorParameter,
+               linePositionFadeWidthParameter,
+               linePositionEdgeFactorParameter,
+               linePositionCenterFactorParameter);
   vbo.bind();
   vbo.drawElementsInstanced(GL_TRIANGLES, quad.getNumIndices(), instanceCount);
   vbo.unbind();

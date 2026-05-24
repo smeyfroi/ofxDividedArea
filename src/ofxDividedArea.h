@@ -122,6 +122,22 @@ public:
   // Use values <1 to make short lines thinner (sense of depth). Independent of
   // the per-endpoint length taper (MinorLineTaper).
   ofParameter<float> lineLengthMinFactorParameter { "lineLengthMinFactor", 1.0, 0.0, 4.0 };
+  // Per-line position-based width modulation (independent of per-endpoint
+  // edge fade). `linePositionFadeWidth` defines a normalised band measured
+  // from canvas edges inward; the line's midpoint distance to the nearest
+  // edge selects between `linePositionEdgeFactor` (line midpoint near edge)
+  // and `linePositionCenterFactor` (line midpoint far from edges, i.e.
+  // toward centre). Default disabled (linePositionFadeWidth = 0).
+  ofParameter<float> linePositionFadeWidthParameter { "linePositionFadeWidth", 0.0, 0.0, 0.5 };
+  // Width multiplier applied to lines whose midpoint sits AT a canvas edge.
+  // Default 1.0 = neutral. <1 thins lines near edges; >1 bulges them.
+  ofParameter<float> linePositionEdgeFactorParameter { "linePositionEdgeFactor", 1.0, 0.0, 4.0 };
+  // Width multiplier applied to lines whose midpoint sits FAR from any canvas
+  // edge (i.e. toward centre). Default 1.0 = neutral. Combined with
+  // `linePositionEdgeFactor`, gives a smooth midpoint-position gradient:
+  //   edge=1, center=0.3 → thinner in the middle of canvas (depth cue)
+  //   edge=0.3, center=1 → thinner toward edges (frame-focus)
+  ofParameter<float> linePositionCenterFactorParameter { "linePositionCenterFactor", 1.0, 0.0, 4.0 };
   ofParameter<float> constrainedWidthParameter { "constrainedWidth", 1.0/500.0f, 0.0, 0.01 };
   ofParameter<int> majorLineStyleParameter { "majorLineStyle", static_cast<int>(MajorLineStyle::Refractive), 0, static_cast<int>(MajorLineStyle::Count) - 1 };
 

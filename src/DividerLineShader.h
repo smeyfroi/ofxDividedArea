@@ -12,7 +12,7 @@
 class DividerLineShader : public Shader {
 
 public:
-  void begin(float maxTaperLength, float minWidthFactorStart, float maxWidthFactorStart, float minWidthFactorEnd, float maxWidthFactorEnd, float edgeFadeWidth, float edgeWidthFactor, float centerWidthFactor, float extendBeyondCanvas, float lineLengthMinFactor) {
+  void begin(float maxTaperLength, float minWidthFactorStart, float maxWidthFactorStart, float minWidthFactorEnd, float maxWidthFactorEnd, float edgeFadeWidth, float edgeWidthFactor, float centerWidthFactor, float extendBeyondCanvas, float lineLengthMinFactor, float linePositionFadeWidth, float linePositionEdgeFactor, float linePositionCenterFactor) {
     Shader::begin();
     shader.setUniform1f("maxTaperLength", maxTaperLength);
     shader.setUniform1f("minWidthFactorStart", minWidthFactorStart);
@@ -24,6 +24,9 @@ public:
     shader.setUniform1f("centerWidthFactor", centerWidthFactor);
     shader.setUniform1f("extendBeyondCanvas", extendBeyondCanvas);
     shader.setUniform1f("lineLengthMinFactor", lineLengthMinFactor);
+    shader.setUniform1f("linePositionFadeWidth", linePositionFadeWidth);
+    shader.setUniform1f("linePositionEdgeFactor", linePositionEdgeFactor);
+    shader.setUniform1f("linePositionCenterFactor", linePositionCenterFactor);
   }
 
 protected:
@@ -47,6 +50,9 @@ protected:
                 uniform float centerWidthFactor; // width factor FAR from edges (outside the band). 1 = full width (default), 0 = invisible in middle, >1 = bulge in middle.
                 uniform float extendBeyondCanvas; // extend each line's drawn geometry past instP0/instP1 by this distance in normalised units along the line direction.
                 uniform float lineLengthMinFactor; // 1 = disabled; <1 = short lines thinner (multiplier at len=0, approaches 1 at len>=maxTaperLength).
+                uniform float linePositionFadeWidth; // 0 = disabled; >0 = band width (normalised) from canvas edges within which midpoint-based width modulation applies.
+                uniform float linePositionEdgeFactor; // width factor for lines whose MIDPOINT sits at a canvas edge. 1 = neutral.
+                uniform float linePositionCenterFactor; // width factor for lines whose MIDPOINT sits far from any canvas edge (toward centre). 1 = neutral.
 
                 out vec2 vUv;
                 out vec4 vColor;
@@ -106,20 +112,41 @@ protected:
                   }
                   startW *= lengthFactor;
                   endW   *= lengthFactor;
+
+                  // STEP 4: per-line position-based multiplier. Computes midpoint
+                  // distance to nearest canvas edge and mixes between two factors
+                  // within a normalised band. Hardcoded 1.0/1.0 here = no visual
+                  // effect; later steps will expose edge/center factors as uniforms.
+                  float positionFactor = 1.0;
+                  if (linePositionFadeWidth > 0.0001) {
+                    vec2 lineMid = (instP0 + instP1) * 0.5;
+                    float midDist = min(min(lineMid.x, 1.0 - lineMid.x), min(lineMid.y, 1.0 - lineMid.y));
+                    float ssMid = smoothstep(0.0, linePositionFadeWidth, midDist);
+                    positionFactor = mix(linePositionEdgeFactor, linePositionCenterFactor, ssMid);
+                  }
+                  startW *= positionFactor;
+                  endW   *= positionFactor;
+
                   float halfW = mix(startW, endW, vUv.y) * 0.5;
 
                   // Extend the drawn line geometry past its original endpoints by
-                  // extendBeyondCanvas units along the line direction. The original
-                  // instP0/instP1 still define the line's identity (edge-fade math
-                  // above uses them), but the drawn quad spans from drawP0 to drawP1.
-                  // Width interpolation along the quad still uses startW->endW (so
-                  // the extension renders at near-startW at one end and near-endW at
-                  // the other; close to original-endpoint widths for small extensions).
+                  // extendBeyondCanvas units along the line direction — BUT ONLY
+                  // for endpoints that actually sit on a canvas edge. Interior
+                  // endpoints (away from any edge) are left alone, otherwise two
+                  // lines that don't cross in their original instP0–instP1 form
+                  // can visibly cross once both are extended, breaking
+                  // DividedArea's non-intersection guarantee (which is enforced on
+                  // the un-extended segments only). The original instP0/instP1
+                  // still define the line's identity (edge-fade math above uses
+                  // them); the drawn quad spans from drawP0 to drawP1. Width
+                  // interpolation along the quad still uses startW->endW.
                   vec2 drawP0 = instP0;
                   vec2 drawP1 = instP1;
                   if (extendBeyondCanvas > 0.0001) {
-                    drawP0 = instP0 - t * extendBeyondCanvas;
-                    drawP1 = instP1 + t * extendBeyondCanvas;
+                    float edgeDistP0_ext = min(min(instP0.x, 1.0 - instP0.x), min(instP0.y, 1.0 - instP0.y));
+                    float edgeDistP1_ext = min(min(instP1.x, 1.0 - instP1.x), min(instP1.y, 1.0 - instP1.y));
+                    if (edgeDistP0_ext < 0.001) drawP0 = instP0 - t * extendBeyondCanvas;
+                    if (edgeDistP1_ext < 0.001) drawP1 = instP1 + t * extendBeyondCanvas;
                   }
                   vec2 base = mix(drawP0, drawP1, vUv.y);
                   float side = inPos.x; // -0.5..0.5
