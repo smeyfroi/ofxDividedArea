@@ -30,6 +30,11 @@ ofParameterGroup& DividedArea::getParameterGroup() {
     parameters.add(maxWidthFactorStartParameter);
     parameters.add(minWidthFactorEndParameter);
     parameters.add(maxWidthFactorEndParameter);
+    parameters.add(edgeFadeWidthParameter);
+    parameters.add(edgeWidthFactorParameter);
+    parameters.add(centerWidthFactorParameter);
+    parameters.add(extendBeyondCanvasParameter);
+    parameters.add(lineLengthMinFactorParameter);
     parameters.add(constrainedWidthParameter);
     parameters.add(majorLineStyleParameter);
     
@@ -301,7 +306,7 @@ DividerLine DividedArea::createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 
   return DividerLine::create(ref1, ref2, constrainedDividerLines, lineWithinUnconstrainedDividerLines);
 }
 
-std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2, ofFloatColor color, float overriddenWidth) {
+std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2, ofFloatColor color, float overriddenWidth, bool taper) {
   if (ref1 == ref2) return std::nullopt;
   DividerLine dividerLine = createConstrainedDividerLine(ref1, ref2);
   float occlusionDistance = constrainedOcclusionDistanceParameter * size.x;
@@ -310,7 +315,7 @@ std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1
   constrainedDividerLines.push_back(dividerLine);
   float width = (overriddenWidth > 0.0) ? overriddenWidth : constrainedWidthParameter.get();
   addDividerInstanced(dividerLine.start, dividerLine.end,
-                      width, true,
+                      width, taper,
                       color);
   return dividerLine;
 }
@@ -410,7 +415,12 @@ void DividedArea::drawInstanced(float scale) {
                minWidthFactorStartParameter,
                maxWidthFactorStartParameter,
                minWidthFactorEndParameter,
-               maxWidthFactorEndParameter);
+               maxWidthFactorEndParameter,
+               edgeFadeWidthParameter,
+               edgeWidthFactorParameter,
+               centerWidthFactorParameter,
+               extendBeyondCanvasParameter,
+               lineLengthMinFactorParameter);
   vbo.bind();
   vbo.drawElementsInstanced(GL_TRIANGLES, quad.getNumIndices(), instanceCount);
   vbo.unbind();

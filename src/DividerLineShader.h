@@ -10,17 +10,22 @@
 #include "Shader.h"
 
 class DividerLineShader : public Shader {
-  
+
 public:
-  void begin(float maxTaperLength, float minWidthFactorStart, float maxWidthFactorStart, float minWidthFactorEnd, float maxWidthFactorEnd) {
+  void begin(float maxTaperLength, float minWidthFactorStart, float maxWidthFactorStart, float minWidthFactorEnd, float maxWidthFactorEnd, float edgeFadeWidth, float edgeWidthFactor, float centerWidthFactor, float extendBeyondCanvas, float lineLengthMinFactor) {
     Shader::begin();
     shader.setUniform1f("maxTaperLength", maxTaperLength);
     shader.setUniform1f("minWidthFactorStart", minWidthFactorStart);
     shader.setUniform1f("maxWidthFactorStart", maxWidthFactorStart);
     shader.setUniform1f("minWidthFactorEnd", minWidthFactorEnd);
     shader.setUniform1f("maxWidthFactorEnd", maxWidthFactorEnd);
+    shader.setUniform1f("edgeFadeWidth", edgeFadeWidth);
+    shader.setUniform1f("edgeWidthFactor", edgeWidthFactor);
+    shader.setUniform1f("centerWidthFactor", centerWidthFactor);
+    shader.setUniform1f("extendBeyondCanvas", extendBeyondCanvas);
+    shader.setUniform1f("lineLengthMinFactor", lineLengthMinFactor);
   }
-  
+
 protected:
   std::string getVertexShader() override {
     return GLSL(
@@ -32,11 +37,16 @@ protected:
                 layout(location = 5) in vec4 instColor;
 
                 uniform mat4 modelViewProjectionMatrix;
-                uniform float maxTaperLength; // vary widths over this px length, e.g. 1000
+                uniform float maxTaperLength; // vary widths over this normalised length (e.g. 0.5)
                 uniform float minWidthFactorStart; // when tapering, minimum width factor at start of taper, e.g. 0.6
                 uniform float maxWidthFactorStart; // when tapering, maximum width factor at start of taper, e.g. 1.0
                 uniform float minWidthFactorEnd; // when tapering, minimum width factor at end, e.g. 0.4
                 uniform float maxWidthFactorEnd; // when tapering, maximum width factor at end, e.g. 0.9
+                uniform float edgeFadeWidth; // 0 = disabled; >0 = per-endpoint width is interpolated within this normalised distance of any screen edge
+                uniform float edgeWidthFactor; // width factor AT the edge (within the fade band). 0 = vanish, 1 = neutral, >1 = bulge.
+                uniform float centerWidthFactor; // width factor FAR from edges (outside the band). 1 = full width (default), 0 = invisible in middle, >1 = bulge in middle.
+                uniform float extendBeyondCanvas; // extend each line's drawn geometry past instP0/instP1 by this distance in normalised units along the line direction.
+                uniform float lineLengthMinFactor; // 1 = disabled; <1 = short lines thinner (multiplier at len=0, approaches 1 at len>=maxTaperLength).
 
                 out vec2 vUv;
                 out vec4 vColor;
@@ -46,21 +56,72 @@ protected:
                   float len = max(length(dir), 1e-6);
                   vec2 t = dir / len;
                   vec2 n = vec2(-t.y, t.x);
-                  
+
                   vUv = inPos.xy + vec2(0.5);
                   vColor = instColor;
-                  
-                  float halfW;
+
+                  // Per-endpoint length-based width (with optional length taper).
+                  // (Declared on separate lines because the GLSL() macro
+                  // interprets top-level commas as argument separators.)
+                  float baseStartW;
+                  float baseEndW;
                   if (instStyle > 0.5) {
                     float widthFactor = clamp(len, 0.0, maxTaperLength) / maxTaperLength;
-                    float startW = instWidth * mix(minWidthFactorStart, maxWidthFactorStart, widthFactor);
-                    float endW   = instWidth * mix(minWidthFactorEnd, maxWidthFactorEnd, widthFactor);
-                    halfW = mix(startW, endW, vUv.y) * 0.5;
+                    baseStartW = instWidth * mix(minWidthFactorStart, maxWidthFactorStart, widthFactor);
+                    baseEndW   = instWidth * mix(minWidthFactorEnd, maxWidthFactorEnd, widthFactor);
                   } else {
-                    halfW = instWidth * 0.5;
+                    baseStartW = instWidth;
+                    baseEndW   = instWidth;
                   }
-                  
-                  vec2 base = mix(instP0, instP1, vUv.y);
+
+                  // Per-endpoint edge modulation. Each endpoint's width is interpolated
+                  // within edgeFadeWidth of any screen edge, from edgeWidthFactor (at the
+                  // edge) toward centerWidthFactor (at the band boundary and outside).
+                  // Combinations:
+                  //   edge=0, center=1 → original "fade to zero at edges"
+                  //   edge=2, center=1 → bulge at edges, normal in middle
+                  //   edge=1, center=0 → fade to zero IN THE MIDDLE (lines visible at edges only)
+                  //   edge=2, center=0 → bulge at edges + fade to zero in middle
+                  // Disabled (factor 1 everywhere) when edgeFadeWidth <= 0.
+                  float edgeFactorP0 = 1.0;
+                  float edgeFactorP1 = 1.0;
+                  if (edgeFadeWidth > 0.0001) {
+                    float edgeDistP0 = min(min(instP0.x, 1.0 - instP0.x), min(instP0.y, 1.0 - instP0.y));
+                    float edgeDistP1 = min(min(instP1.x, 1.0 - instP1.x), min(instP1.y, 1.0 - instP1.y));
+                    float ssP0 = smoothstep(0.0, edgeFadeWidth, edgeDistP0);
+                    float ssP1 = smoothstep(0.0, edgeFadeWidth, edgeDistP1);
+                    edgeFactorP0 = mix(edgeWidthFactor, centerWidthFactor, ssP0);
+                    edgeFactorP1 = mix(edgeWidthFactor, centerWidthFactor, ssP1);
+                  }
+
+                  float startW = baseStartW * edgeFactorP0;
+                  float endW   = baseEndW   * edgeFactorP1;
+
+                  // Per-line length-based multiplier (uniform across the line).
+                  // Short lines get lineLengthMinFactor; long lines (>=maxTaperLength) get 1.0.
+                  float lengthFactor = 1.0;
+                  if (lineLengthMinFactor < 0.9999 || lineLengthMinFactor > 1.0001) {
+                    float lengthT = clamp(len, 0.0, maxTaperLength) / maxTaperLength;
+                    lengthFactor = mix(lineLengthMinFactor, 1.0, lengthT);
+                  }
+                  startW *= lengthFactor;
+                  endW   *= lengthFactor;
+                  float halfW = mix(startW, endW, vUv.y) * 0.5;
+
+                  // Extend the drawn line geometry past its original endpoints by
+                  // extendBeyondCanvas units along the line direction. The original
+                  // instP0/instP1 still define the line's identity (edge-fade math
+                  // above uses them), but the drawn quad spans from drawP0 to drawP1.
+                  // Width interpolation along the quad still uses startW->endW (so
+                  // the extension renders at near-startW at one end and near-endW at
+                  // the other; close to original-endpoint widths for small extensions).
+                  vec2 drawP0 = instP0;
+                  vec2 drawP1 = instP1;
+                  if (extendBeyondCanvas > 0.0001) {
+                    drawP0 = instP0 - t * extendBeyondCanvas;
+                    drawP1 = instP1 + t * extendBeyondCanvas;
+                  }
+                  vec2 base = mix(drawP0, drawP1, vUv.y);
                   float side = inPos.x; // -0.5..0.5
                   vec2 offset = n * side * (2.0 * halfW);
                   vec2 worldPos = base + offset;

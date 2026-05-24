@@ -60,7 +60,10 @@ public:
   void clearConstrainedDividerLines();
   void deleteEarlyConstrainedDividerLines(size_t count);
   DividerLine createConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2) const;
-  std::optional<DividerLine> addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2, ofFloatColor color, float overriddenWidth = -1.0);
+  // taper = false (default) renders uniform-width rectangles. taper = true renders
+  // rhomboids using the maxTaperLength + minWidthFactorStart/End + maxWidthFactorStart/End
+  // parameters (see DividerLineShader). Callers opt in explicitly per-call.
+  std::optional<DividerLine> addConstrainedDividerLine(glm::vec2 ref1, glm::vec2 ref2, ofFloatColor color, float overriddenWidth = -1.0, bool taper = false);
   
   void draw(float areaConstraintLineWidth, float unconstrainedLineWidth, float scale, const ofFbo& backgroundFbo, const ofFloatColor& color = ofFloatColor(1.0f));
   
@@ -81,11 +84,44 @@ public:
   ofParameter<float> constrainedOcclusionDistanceParameter { "constrainedOcclusionDistance", 0.0015, 0.0, 0.01 };
   ofParameter<float> occlusionAngleParameter { "occlusionAngle", 0.97, 0.0, 1.0 }; // 0.0 if perpendicular, 1.0 if coincident
   ofParameter<int> maxConstrainedLinesParameter { "maxConstrainedLines", 800, 50, 10000 };
-  ofParameter<float> maxTaperLengthParameter { "maxTaperLength", 1000.0, 100.0, 6000.0 }; // vary widths over this px length
+  ofParameter<float> maxTaperLengthParameter { "maxTaperLength", 0.5, 0.01, 2.0 }; // vary widths over this NORMALISED length. DividerLineShader computes line length from normalised instance positions, so this comparison must also be in normalised units. Was 1000 in pixels which mismatched the shader's normalised len (always ~0..1.4) and forced widthFactor to ~0, collapsing every line to the MIN end of its taper width-factor range (~40-60% of configured PathWidth). Default 0.5 means lines half-screen or longer render at full width; shorter lines taper narrower as designed.
   ofParameter<float> minWidthFactorStartParameter { "minWidthFactorStart", 0.6, 0.0, 1.0 }; // when tapering, minimum width factor at start of taper
   ofParameter<float> maxWidthFactorStartParameter { "maxWidthFactorStart", 1.0, 0.0, 1.0 }; // when tapering, maximum width factor at start of taper
   ofParameter<float> minWidthFactorEndParameter { "minWidthFactorEnd", 0.4, 0.0, 1.0 }; // when tapering, minimum width factor at end
   ofParameter<float> maxWidthFactorEndParameter { "maxWidthFactorEnd", 0.9, 0.0, 1.0 }; // when tapering, maximum width factor at end
+  // Edge-fade taper (per-endpoint, independent of the length-based MinorLineTaper).
+  // 0 = disabled. >0 = each endpoint's width is interpolated within this normalised
+  // distance from any screen edge, from `edgeWidthFactor` at the edge toward 1.0
+  // at the band boundary (full width outside the band).
+  ofParameter<float> edgeFadeWidthParameter { "edgeFadeWidth", 0.0, 0.0, 0.5 };
+  // Width factor AT the screen edge (within the fade band). The line endpoint's
+  // width is `instWidth × mix(edgeWidthFactor, centerWidthFactor, smoothstep(0, edgeFadeWidth, edgeDist))`.
+  // Values < 1.0 fade the line thinner toward the edge (0 = vanish at edge).
+  // Values > 1.0 bulge the line thicker toward the edge (e.g. 2.0 = double width at edge).
+  // Default 0.0 preserves the original "fade to zero at edges" behaviour.
+  ofParameter<float> edgeWidthFactorParameter { "edgeWidthFactor", 0.0, 0.0, 4.0 };
+  // Width factor FAR from any screen edge (outside the fade band, i.e. toward the
+  // centre). Default 1.0 = normal full width in the middle (existing behaviour).
+  // Set < 1.0 to thin lines in the middle (e.g. 0 = invisible in middle, paired with
+  // edgeWidthFactor > 0 gives "thick at edges, fade to zero in middle"). Set > 1.0
+  // to bulge in the middle relative to edges. Combined with `edgeFadeWidth`, the
+  // fade band becomes a smooth gradient between the two factor values.
+  ofParameter<float> centerWidthFactorParameter { "centerWidthFactor", 1.0, 0.0, 4.0 };
+  // Extend each line's drawn geometry past its endpoints by this distance (in
+  // normalised line-direction units, so 0.05 extends each end of every line by
+  // an additional 5% of the canvas-width-equivalent in the line's direction).
+  // Default 0 = draw exactly between instP0 and instP1. Used to push line
+  // geometry past the [0, 1] visible canvas bounds so fluid advection at edges
+  // doesn't leave missing patches — the line gets re-painted into the boundary
+  // every frame from the extended geometry, even as advection pulls content
+  // off-screen. Width interpolation along the extension uses the original
+  // endpoint widths (the extension is treated as a continuation of the line).
+  ofParameter<float> extendBeyondCanvasParameter { "extendBeyondCanvas", 0.0, 0.0, 0.2 };
+  // Per-line length-based width scaling. Short lines (length=0) get this factor;
+  // long lines (length>=maxTaperLength) get 1.0. Default 1.0 = disabled.
+  // Use values <1 to make short lines thinner (sense of depth). Independent of
+  // the per-endpoint length taper (MinorLineTaper).
+  ofParameter<float> lineLengthMinFactorParameter { "lineLengthMinFactor", 1.0, 0.0, 4.0 };
   ofParameter<float> constrainedWidthParameter { "constrainedWidth", 1.0/500.0f, 0.0, 0.01 };
   ofParameter<int> majorLineStyleParameter { "majorLineStyle", static_cast<int>(MajorLineStyle::Refractive), 0, static_cast<int>(MajorLineStyle::Count) - 1 };
 
