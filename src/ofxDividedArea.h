@@ -116,7 +116,7 @@ public:
   // every frame from the extended geometry, even as advection pulls content
   // off-screen. Width interpolation along the extension uses the original
   // endpoint widths (the extension is treated as a continuation of the line).
-  ofParameter<float> extendBeyondCanvasParameter { "extendBeyondCanvas", 0.0, 0.0, 0.2 };
+  ofParameter<float> extendBeyondCanvasParameter { "extendBeyondCanvas", 0.0, 0.0, 0.5 };
   // Per-line length-based width scaling. Short lines (length=0) get this factor;
   // long lines (length>=maxTaperLength) get 1.0. Default 1.0 = disabled.
   // Use values <1 to make short lines thinner (sense of depth). Independent of
@@ -149,19 +149,44 @@ public:
   void drawInstanced(float scale = 1.0f);
   void addDividerInstanced(const glm::vec2& a, const glm::vec2& b, float width, bool taper, const ofFloatColor& col);
 
+  // OneShotDraw mode: when enabled, each instance is drawn EXACTLY ONCE (the
+  // frame it's added) rather than re-drawn every frame from the ring. The ring
+  // still holds all instances for occlusion-test memory (so new lines don't
+  // overlap existing ones), but the GPU draw path uses a parallel
+  // `pendingInstances` accumulator that's flushed each frame and cleared.
+  // Designed for "slab" cells where each minor line is a one-shot deposit into
+  // a persistent layer (clearOnUpdate:false), and the cell relies on Fluid
+  // dissipation or a FadeMod for natural decay. Disabled by default for
+  // backward compatibility with all existing cells.
+  // Side effect: ClearMinorFraction becomes memory-only — removes instances
+  // from occlusion memory (freeing space for new non-overlapping lines) but
+  // does NOT undo their painted pixels in the FBO. That's appropriate for
+  // slab-aesthetic cells; for cells that want visual ClearMinorFraction, leave
+  // OneShotDraw disabled.
+  void setOneShotDraw(bool enabled);
+
 private:
   float getUnconstrainedSmoothnessEffective() const;
 
   void setupInstancedDraw(int instanceNumber);
-  std::vector<DividerInstance> instances; // ring buffer
-  mutable ofBufferObject instanceBO; // GPU buffer for instances
-  mutable ofVbo vbo; // instance vertices
+  std::vector<DividerInstance> instances; // ring buffer (occlusion memory + legacy-mode GPU upload)
+  mutable ofBufferObject instanceBO; // GPU buffer for ring instances
+  mutable ofVbo vbo; // instance vertices (ring)
   ofMesh quad; // for each instance
   DividerLineShader shader; // instanced render
   int instanceCapacity = 0;
   mutable int instanceCount = 0;
   int head = 0;
   mutable bool instancesDirty = false;
+
+  // OneShotDraw state. `pendingInstances` accumulates new instances since the
+  // last drawInstanced flush; the parallel `pendingBO`/`pendingVbo` are
+  // dedicated GPU resources for one-shot draws. Bounded by ring capacity in
+  // practice (you'd never queue more than the ring can hold per frame).
+  bool oneShotDraw = false;
+  std::vector<DividerInstance> pendingInstances;
+  mutable ofBufferObject pendingBO;
+  mutable ofVbo pendingVbo;
 
   // Major line style shaders (lazy-loaded)
   std::unique_ptr<SolidLineShader> solidLineShader;

@@ -369,6 +369,33 @@ void DividedArea::setupInstancedDraw(int newInstanceCapacity) {
   vbo.setAttributeBuffer(5, instanceBO, 4, stride, offColor);
   vbo.setAttributeDivisor(5, 1);
   vbo.unbind();
+
+  // Parallel GPU buffer + VBO for OneShotDraw mode. Same unit-quad mesh, same
+  // per-instance attribute layout — we just feed it from `pendingInstances`
+  // each frame and draw that many. Sized to match the ring capacity (you can
+  // never queue more new instances per frame than the ring can hold).
+  std::vector<DividerInstance> emptyPending(instanceCapacity);
+  pendingBO.allocate(emptyPending, GL_DYNAMIC_DRAW);
+  pendingVbo.setMesh(quad, GL_STATIC_DRAW);
+  pendingVbo.bind();
+  pendingVbo.setAttributeBuffer(1, pendingBO, 2, stride, offP0);
+  pendingVbo.setAttributeDivisor(1, 1);
+  pendingVbo.setAttributeBuffer(2, pendingBO, 2, stride, offP1);
+  pendingVbo.setAttributeDivisor(2, 1);
+  pendingVbo.setAttributeBuffer(3, pendingBO, 1, stride, offWidth);
+  pendingVbo.setAttributeDivisor(3, 1);
+  pendingVbo.setAttributeBuffer(4, pendingBO, 1, stride, offStyle);
+  pendingVbo.setAttributeDivisor(4, 1);
+  pendingVbo.setAttributeBuffer(5, pendingBO, 4, stride, offColor);
+  pendingVbo.setAttributeDivisor(5, 1);
+  pendingVbo.unbind();
+}
+
+void DividedArea::setOneShotDraw(bool enabled) {
+  if (oneShotDraw == enabled) return;
+  oneShotDraw = enabled;
+  // Drop any queued pending when switching modes so we don't double-draw.
+  pendingInstances.clear();
 }
 
 void DividedArea::addDividerInstanced(const glm::vec2& a, const glm::vec2& b, float width, bool taper, const ofFloatColor& col) {
@@ -388,6 +415,12 @@ void DividedArea::addDividerInstanced(const glm::vec2& a, const glm::vec2& b, fl
   instances[idx].color = col;
   instanceCount++;
   instancesDirty = true;
+
+  // OneShotDraw: also queue this instance for one-time GPU draw this frame.
+  // The ring entry above is preserved for occlusion-test memory only.
+  if (oneShotDraw) {
+    pendingInstances.push_back(instances[idx]);
+  }
 }
 
 static void syncInstanceBufferIfNeeded(const std::vector<DividerInstance>& instances, int head, int count, int capacity, ofBufferObject& bo) {
@@ -403,13 +436,57 @@ static void syncInstanceBufferIfNeeded(const std::vector<DividerInstance>& insta
 }
 
 void DividedArea::drawInstanced(float scale) {
+  // OneShotDraw mode: draw only instances added since the last flush, then
+  // clear the pending queue. Each instance is drawn exactly once in its
+  // lifetime — its pixels then persist in the destination FBO and evolve via
+  // whatever Fluid/Fade mechanism the cell has.
+  if (oneShotDraw) {
+    if (pendingInstances.empty()) return;
+
+    const int pendingCount = static_cast<int>(pendingInstances.size());
+    // Upload pending instances to the dedicated GPU buffer. If we have more
+    // pending than the buffer was sized for (would be unusual), reallocate.
+    if (pendingCount > instanceCapacity) {
+      pendingBO.allocate(pendingInstances, GL_DYNAMIC_DRAW);
+    } else {
+      pendingBO.updateData(0, pendingCount * (int)sizeof(DividerInstance), pendingInstances.data());
+    }
+
+    ofPushMatrix();
+    ofScale(scale);
+    ofEnableBlendMode(OF_BLENDMODE_ALPHA);
+    ofFill(); glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); ofDisableDepthTest();
+    shader.begin(maxTaperLengthParameter,
+                 minWidthFactorStartParameter,
+                 maxWidthFactorStartParameter,
+                 minWidthFactorEndParameter,
+                 maxWidthFactorEndParameter,
+                 edgeFadeWidthParameter,
+                 edgeWidthFactorParameter,
+                 centerWidthFactorParameter,
+                 extendBeyondCanvasParameter,
+                 lineLengthMinFactorParameter,
+                 linePositionFadeWidthParameter,
+                 linePositionEdgeFactorParameter,
+                 linePositionCenterFactorParameter);
+    pendingVbo.bind();
+    pendingVbo.drawElementsInstanced(GL_TRIANGLES, quad.getNumIndices(), pendingCount);
+    pendingVbo.unbind();
+    shader.end();
+    ofPopMatrix();
+
+    pendingInstances.clear();
+    return;
+  }
+
+  // Legacy mode: redraw the whole ring every frame.
   if (instanceCount == 0) return;
-  
+
   if (instancesDirty) {
     syncInstanceBufferIfNeeded(instances, head, instanceCount, instanceCapacity, instanceBO);
     instancesDirty = false;
   }
-  
+
   ofPushMatrix();
   ofScale(scale);
   ofEnableBlendMode(OF_BLENDMODE_ALPHA);
