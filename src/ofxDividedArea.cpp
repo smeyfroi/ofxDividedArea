@@ -324,22 +324,25 @@ std::optional<DividerLine> DividedArea::addConstrainedDividerLine(glm::vec2 ref1
 }
 
 void DividedArea::setupInstancedDraw(int newInstanceCapacity) {
-  // build unit quad only once
+  // build unit quad only once — and upload it to both vbos at the same time.
+  // setupInstancedDraw is called both from the constructor (with the
+  // param's DEFAULT value) and from addDividerInstanced when capacity
+  // mismatches the config value. If we let setMesh run twice on pendingVbo
+  // but only once on vbo (asymmetric guard), the second-setup state of
+  // pendingVbo gets into a fragile state — attribute bindings re-apply but
+  // the re-uploaded mesh disrupts the VAO and one-shot draws produce
+  // nothing visible. Both setMesh calls live inside this lazy-init block.
   if (quad.getNumVertices() == 0) {
     quad.setMode(OF_PRIMITIVE_TRIANGLES);
     quad.addVertex({-0.5f, -0.5f, 0.0f}); // 0 bottom-left
     quad.addVertex({ 0.5f, -0.5f, 0.0f}); // 1 bottom-right
     quad.addVertex({ 0.5f,  0.5f, 0.0f}); // 2 top-right
     quad.addVertex({-0.5f,  0.5f, 0.0f}); // 3 top-left
-    // Optional per-vertex attributes if you want (uvs/colors) — not required for instancing
-    //    quad.addTexCoord({0.0f, 0.0f});
-    //    quad.addTexCoord({1.0f, 0.0f});
-    //    quad.addTexCoord({1.0f, 1.0f});
-    //    quad.addTexCoord({0.0f, 1.0f});
     // Indices: two CCW triangles (0,1,2) and (0,2,3)
     quad.addIndex(0); quad.addIndex(1); quad.addIndex(2);
     quad.addIndex(2); quad.addIndex(3); quad.addIndex(0);
     vbo.setMesh(quad, GL_STATIC_DRAW);
+    pendingVbo.setMesh(quad, GL_STATIC_DRAW);
   }
   
   instanceCapacity = newInstanceCapacity;
@@ -370,13 +373,13 @@ void DividedArea::setupInstancedDraw(int newInstanceCapacity) {
   vbo.setAttributeDivisor(5, 1);
   vbo.unbind();
 
-  // Parallel GPU buffer + VBO for OneShotDraw mode. Same unit-quad mesh, same
-  // per-instance attribute layout — we just feed it from `pendingInstances`
-  // each frame and draw that many. Sized to match the ring capacity (you can
-  // never queue more new instances per frame than the ring can hold).
+  // Parallel GPU buffer for OneShotDraw mode. Same per-instance attribute
+  // layout — fed from `pendingInstances` each frame and draws that many.
+  // Sized to match the ring capacity. `pendingVbo.setMesh` is upstairs
+  // in the lazy-init block (once only); we only refresh the instance-attribute
+  // bindings here so they re-bind to the newly-reallocated pendingBO.
   std::vector<DividerInstance> emptyPending(instanceCapacity);
   pendingBO.allocate(emptyPending, GL_DYNAMIC_DRAW);
-  pendingVbo.setMesh(quad, GL_STATIC_DRAW);
   pendingVbo.bind();
   pendingVbo.setAttributeBuffer(1, pendingBO, 2, stride, offP0);
   pendingVbo.setAttributeDivisor(1, 1);
